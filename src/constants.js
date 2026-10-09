@@ -5,6 +5,7 @@ export const TIERS = [
   { key: 'npc',   label: 'NPC',   desc: '平平无奇', c1: '#4ade80', c2: '#059669', text: '#ffffff' },
   { key: 'la',    label: '拉完了', desc: '踩雷预警', c1: '#94a3b8', c2: '#64748b', text: '#ffffff' },
 ]
+export const POOL_TIER = 'pool'
 export const FONT = '-apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif'
 export const STORE_KEY = 'rank-list:v1'
 export const DB_NAME = 'hang-rank'

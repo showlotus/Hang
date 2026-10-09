@@ -1,4 +1,21 @@
+import { POOL_TIER, TIERS } from './constants.js'
+
 export const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2))
+
+const VALID_TIERS = new Set([...TIERS.map(t => t.key), POOL_TIER])
+
+export function normalizeItems(items) {
+  if (!Array.isArray(items)) return []
+  return items
+    .filter(it => it && it.id && typeof it.name === 'string')
+    .map(it => ({
+      id: it.id,
+      name: it.name,
+      note: typeof it.note === 'string' ? it.note : '',
+      tier: VALID_TIERS.has(it.tier) ? it.tier : 'rsr',
+      src: typeof it.src === 'string' ? it.src : null,
+    }))
+}
 
 export const tierStyle = t => ({ '--c1': t.c1, '--c2': t.c2, '--tc': t.text })
 

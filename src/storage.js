@@ -1,7 +1,9 @@
 import { DB_NAME, DB_VERSION, STORE_KEY } from './constants.js'
+import { normalizeItems, uid } from './utils.js'
 
 const STORE = 'kv'
 const STATE_ID = 'state'
+const GROUP_PREFIX = 'group:'
 
 let dbPromise = null
 
@@ -20,30 +22,56 @@ function openDB() {
   return dbPromise
 }
 
-async function idbGet() {
+async function idbEntries() {
   const db = await openDB()
   return await new Promise((resolve, reject) => {
-    const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(STATE_ID)
-    req.onsuccess = () => resolve(req.result ?? null)
+    const out = []
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).openCursor()
+    req.onsuccess = () => {
+      const c = req.result
+      if (!c) return resolve(out)
+      out.push([c.key, c.value])
+      c.continue()
+    }
     req.onerror = () => reject(req.error)
   })
 }
 
-async function idbPut(value) {
+async function idbPut(key, value) {
   const db = await openDB()
   await new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite')
-    tx.objectStore(STORE).put(value, STATE_ID)
+    tx.objectStore(STORE).put(value, key)
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
     tx.onabort = () => reject(tx.error)
   })
 }
 
-function normalize(saved) {
+async function idbDel(key) {
+  const db = await openDB()
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    tx.objectStore(STORE).delete(key)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
+}
+
+function normalizeGroup(rec) {
+  if (!rec || typeof rec !== 'object' || typeof rec.id !== 'string') return null
+  return {
+    id: rec.id,
+    title: typeof rec.title === 'string' && rec.title.trim() ? rec.title.trim() : '排行榜',
+    items: normalizeItems(rec.items),
+  }
+}
+
+function normalizeV1(saved) {
   if (saved && Array.isArray(saved.items)) {
     return {
-      items: saved.items.filter(it => it && it.id && typeof it.name === 'string'),
+      items: normalizeItems(saved.items),
       title: typeof saved.title === 'string' && saved.title ? saved.title : '排行榜',
     }
   }
@@ -52,7 +80,7 @@ function normalize(saved) {
 
 function readLegacy() {
   try {
-    return normalize(JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null'))
+    return normalizeV1(JSON.parse(localStorage.getItem(STORE_KEY) ?? 'null'))
   } catch { /* ignore */ }
   return null
 }
@@ -61,25 +89,49 @@ function clearLegacy() {
   try { localStorage.removeItem(STORE_KEY) } catch { /* ignore */ }
 }
 
-export async function loadState() {
-  let stored = null
-  try { stored = await idbGet() } catch { /* fall back to legacy */ }
-  const fromIdb = normalize(stored)
-  if (fromIdb) {
-    clearLegacy()
-    return fromIdb
-  }
-  const legacy = readLegacy()
-  if (legacy) {
-    try {
-      await idbPut(legacy)
-      clearLegacy()
-    } catch { /* keep legacy until next attempt */ }
-    return legacy
-  }
-  return { items: [], title: '排行榜' }
+function defaultState() {
+  const id = uid()
+  return { groups: [{ id, title: '排行榜', items: [] }], activeGroupId: id }
 }
 
-export async function saveState(state) {
-  await idbPut(state)
+async function migrateV1(v1) {
+  const group = { id: uid(), title: v1.title, items: v1.items }
+  try {
+    await idbPut(GROUP_PREFIX + group.id, group)
+    await idbPut(STATE_ID, { version: 2, activeGroupId: group.id, order: [group.id] })
+    clearLegacy()
+  } catch { /* keep source until next attempt */ }
+  return { groups: [group], activeGroupId: group.id }
+}
+
+export async function loadState() {
+  let entries = []
+  try { entries = await idbEntries() } catch { /* fall back to legacy */ }
+  const map = new Map(entries)
+  const meta = map.get(STATE_ID)
+  if (meta && meta.version === 2 && Array.isArray(meta.order)) {
+    const groups = meta.order.map(id => normalizeGroup(map.get(GROUP_PREFIX + id))).filter(Boolean)
+    if (groups.length) {
+      clearLegacy()
+      const active = groups.some(g => g.id === meta.activeGroupId) ? meta.activeGroupId : groups[0].id
+      return { groups, activeGroupId: active }
+    }
+  }
+  const fromIdb = normalizeV1(meta)
+  if (fromIdb) return migrateV1(fromIdb)
+  const legacy = readLegacy()
+  if (legacy) return migrateV1(legacy)
+  return defaultState()
+}
+
+export async function saveMeta({ activeGroupId, order }) {
+  await idbPut(STATE_ID, { version: 2, activeGroupId, order })
+}
+
+export async function saveGroup(group) {
+  await idbPut(GROUP_PREFIX + group.id, group)
+}
+
+export async function deleteGroupRecord(id) {
+  await idbDel(GROUP_PREFIX + id)
 }

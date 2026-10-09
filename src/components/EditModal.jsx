@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PicDrop from './PicDrop.jsx'
 import TierPicker from './TierPicker.jsx'
 import { useToast } from './ToastContext.jsx'
@@ -54,9 +54,17 @@ function EditForm({ item, onSave, onDelete }) {
 }
 
 export default function EditModal({ modal, onClose, onSave, onDelete }) {
+  const open = !!modal?.open
+  useEffect(() => {
+    if (!open) return
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    addEventListener('keydown', onKey)
+    return () => removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   return (
     <div
-      className={'modal-mask' + (modal?.open ? ' show' : '')}
+      className={'modal-mask' + (open ? ' show' : '')}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="modal">

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { TIERS } from '../constants.js'
+import { POOL_TIER, TIERS } from '../constants.js'
 import { tierStyle } from '../utils.js'
+import ImagePool from './ImagePool.jsx'
 
 function Card({ item, tier }) {
   return (
@@ -19,9 +20,13 @@ function Card({ item, tier }) {
   )
 }
 
-export default function Board({ items, onMove, onAddFiles, onDelete, onEdit, onPreview }) {
+export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete, onEdit, onPreview, onAddItem }) {
   const dragIdRef = useRef(null)
   const ghostRef = useRef(null)
+
+  const clearOver = () => {
+    document.querySelectorAll('.tier-row.over, .pool-zone.over').forEach(el => el.classList.remove('over'))
+  }
 
   useEffect(() => {
     const onDocDragOver = e => {
@@ -36,9 +41,14 @@ export default function Board({ items, onMove, onAddFiles, onDelete, onEdit, onP
     return () => document.removeEventListener('dragover', onDocDragOver)
   }, [])
 
+  const clearDropMark = () => {
+    document.querySelectorAll('.drop-before').forEach(c => c.classList.remove('drop-before'))
+  }
+
   const handleDragStart = e => {
     const card = e.target.closest('.card')
     if (!card) return
+    clearDropMark()
     dragIdRef.current = card.dataset.id
     card.classList.add('dragging')
     e.dataTransfer.effectAllowed = 'move'
@@ -57,23 +67,45 @@ export default function Board({ items, onMove, onAddFiles, onDelete, onEdit, onP
     dragIdRef.current = null
     if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null }
     document.querySelectorAll('.dragging').forEach(c => c.classList.remove('dragging'))
-    document.querySelectorAll('.drop-before').forEach(c => c.classList.remove('drop-before'))
-    document.querySelectorAll('.tier-row.over').forEach(r => r.classList.remove('over'))
+    clearDropMark()
+    requestAnimationFrame(clearDropMark)
+    clearOver()
   }
 
   const handleDragOver = e => {
     const row = e.target.closest('.tier-row')
-    if (!row) return
+    const pool = row ? null : e.target.closest('.pool-zone')
+    if (!row && !pool) return
+    if (pool) {
+      e.preventDefault()
+      clearOver()
+      pool.classList.add('over')
+      if (dragIdRef.current) {
+        const cards = [...pool.querySelectorAll('.card')].filter(c => c.dataset.id !== dragIdRef.current)
+        let beforeId = null
+        for (const c of cards) {
+          const r = c.getBoundingClientRect()
+          if (e.clientX < r.left + r.width / 2) { beforeId = c.dataset.id; break }
+        }
+        document.querySelectorAll('.drop-before').forEach(c => c.classList.remove('drop-before'))
+        if (beforeId) {
+          const target = pool.querySelector(`.card[data-id="${beforeId}"]`)
+          if (target) target.classList.add('drop-before')
+        }
+        pool.dataset.beforeId = beforeId || ''
+      }
+      return
+    }
     if (!dragIdRef.current) {
       if ([...e.dataTransfer.types].includes('Files')) {
         e.preventDefault()
-        document.querySelectorAll('.tier-row.over').forEach(r => r !== row && r.classList.remove('over'))
+        clearOver()
         row.classList.add('over')
       }
       return
     }
     e.preventDefault()
-    document.querySelectorAll('.tier-row.over').forEach(r => r !== row && r.classList.remove('over'))
+    clearOver()
     row.classList.add('over')
     const cards = [...row.querySelectorAll('.card')].filter(c => c.dataset.id !== dragIdRef.current)
     let beforeId = null
@@ -91,14 +123,26 @@ export default function Board({ items, onMove, onAddFiles, onDelete, onEdit, onP
 
   const handleDrop = e => {
     const row = e.target.closest('.tier-row')
-    if (!row) return
-    e.preventDefault()
-    row.classList.remove('over')
-    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))
-    if (files.length) { onAddFiles(files, row.dataset.key); return }
-    if (!dragIdRef.current) return
-    onMove(dragIdRef.current, row.dataset.key, row.dataset.beforeId || null)
-    row.dataset.beforeId = ''
+    const pool = row ? null : e.target.closest('.pool-zone')
+    clearDropMark()
+    if (row) {
+      e.preventDefault()
+      row.classList.remove('over')
+      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))
+      if (files.length) { onAddFiles(files, row.dataset.key); return }
+      if (!dragIdRef.current) return
+      onMove(dragIdRef.current, row.dataset.key, row.dataset.beforeId || null)
+      row.dataset.beforeId = ''
+      return
+    }
+    if (pool) {
+      e.preventDefault()
+      pool.classList.remove('over')
+      const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))
+      if (files.length) { onAddFiles(files, POOL_TIER); return }
+      if (dragIdRef.current) onMove(dragIdRef.current, POOL_TIER, pool.dataset.beforeId || null)
+      pool.dataset.beforeId = ''
+    }
   }
 
   const handleClick = e => {
@@ -131,12 +175,19 @@ export default function Board({ items, onMove, onAddFiles, onDelete, onEdit, onP
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      <ImagePool
+        items={items.filter(i => i.tier === POOL_TIER)}
+        onAddFiles={onAddFiles}
+        onMoveMany={onMoveMany}
+        onDelete={onDelete}
+        onAddItem={onAddItem}
+      />
       {TIERS.map(t => {
         const rowItems = items.filter(i => i.tier === t.key)
         return (
           <div key={t.key} className="tier-row" data-key={t.key} style={tierStyle(t)}>
             <div className="tier-label"><b>{t.label}</b><span>{t.desc}</span></div>
-            <div className="tier-items flex min-h-[152px] flex-1 flex-wrap content-start gap-2.5 p-0.5">
+            <div className="tier-items flex min-h-[168px] flex-1 flex-wrap content-start gap-2.5 p-0.5">
               {rowItems.length === 0 && <div className="tier-empty">拖入卡片</div>}
               {rowItems.map(it => <Card key={it.id} item={it} tier={t} />)}
             </div>

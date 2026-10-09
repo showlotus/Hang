@@ -1,30 +1,37 @@
 import { useEffect, useRef, useState } from 'react'
 import { copyPNG, downloadJSON, downloadPNG } from './exportCanvas.js'
-import Adder from './components/Adder.jsx'
 import Blobs from './components/Blobs.jsx'
 import Board from './components/Board.jsx'
 import EditModal from './components/EditModal.jsx'
+import GroupTabs from './components/GroupTabs.jsx'
 import Lightbox from './components/Lightbox.jsx'
 import TopBar from './components/TopBar.jsx'
 import { useToast } from './components/ToastContext.jsx'
-import { TIERS } from './constants.js'
-import { loadState, saveState } from './storage.js'
-import { fileToDataURL, uid } from './utils.js'
+import { POOL_TIER } from './constants.js'
+import { deleteGroupRecord, loadState, saveGroup, saveMeta } from './storage.js'
+import { fileToDataURL, normalizeItems, uid } from './utils.js'
+
+const EMPTY = []
 
 export default function App() {
-  const [items, setItems] = useState([])
-  const [title, setTitle] = useState('排行榜')
+  const [groups, setGroups] = useState([])
+  const [activeId, setActiveId] = useState(null)
   const [ready, setReady] = useState(false)
   const [editModal, setEditModal] = useState(null)
   const [lightbox, setLightbox] = useState(null)
   const toast = useToast()
 
+  const active = groups.find(g => g.id === activeId)
+  const items = active ? active.items : EMPTY
+  const title = active ? active.title : ''
+  const rankCount = items.filter(i => i.tier !== POOL_TIER).length
+
   useEffect(() => {
     let alive = true
     loadState().then(data => {
       if (!alive) return
-      setItems(data.items)
-      setTitle(data.title)
+      setGroups(data.groups)
+      setActiveId(data.activeGroupId)
       setReady(true)
     })
     return () => { alive = false }
@@ -37,21 +44,83 @@ export default function App() {
   const closeEdit = () => setEditModal(m => (m ? { ...m, open: false } : m))
 
   const saveTimer = useRef(null)
+  const pendingRef = useRef(null)
+  const lastMetaRef = useRef('')
   useEffect(() => {
-    if (!ready) return
+    if (!ready || !activeId) return
+    const snapshot = { id: activeId, title: title.trim(), items }
+    const prev = pendingRef.current
+    if (prev && prev.id !== activeId) saveGroup(prev).catch(() => toast('缓存失败：本地存储写入异常'))
+    pendingRef.current = snapshot
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      saveState({ title: title.trim(), items }).catch(() => toast('缓存失败：本地存储写入异常'))
+      saveGroup(snapshot).catch(() => toast('缓存失败：本地存储写入异常'))
     }, 250)
     return () => clearTimeout(saveTimer.current)
-  }, [items, title, ready, toast])
+  }, [items, title, activeId, ready, toast])
+
+  useEffect(() => {
+    if (!ready || !activeId) return
+    const order = groups.map(g => g.id)
+    const key = activeId + '|' + order.join('\n')
+    if (lastMetaRef.current === key) return
+    lastMetaRef.current = key
+    saveMeta({ activeGroupId: activeId, order }).catch(() => toast('缓存失败：本地存储写入异常'))
+  }, [activeId, groups, ready, toast])
+
+  const mutateItems = fn => {
+    setGroups(prev => prev.map(g => (g.id === activeId ? { ...g, items: fn(g.items) } : g)))
+  }
+
+  const commitTitle = t => {
+    setGroups(prev => prev.map(g => (g.id === activeId ? { ...g, title: t } : g)))
+  }
+
+  const selectGroup = id => {
+    if (id !== activeId) setActiveId(id)
+  }
+
+  const createGroup = () => {
+    const used = new Set(groups.map(g => g.title))
+    let n = groups.length + 1
+    while (used.has(`排行榜 ${n}`)) n++
+    const g = { id: uid(), title: `排行榜 ${n}`, items: [] }
+    setGroups(prev => [...prev, g])
+    setActiveId(g.id)
+    toast('已新建分组')
+  }
+
+  const removeGroup = id => {
+    const g = groups.find(x => x.id === id)
+    if (!g) return
+    const poolCount = g.items.filter(i => i.tier === POOL_TIER).length
+    const detail = [g.items.length - poolCount ? `${g.items.length - poolCount} 项排行` : '', poolCount ? `${poolCount} 张集合图片` : '']
+      .filter(Boolean).join(' · ')
+    if (!confirm(`删除分组「${g.title}」${detail ? '（' + detail + '）' : ''}？此操作不可恢复。`)) return
+    if (pendingRef.current && pendingRef.current.id === id) pendingRef.current = null
+    deleteGroupRecord(id).catch(() => {})
+    const idx = groups.findIndex(x => x.id === id)
+    let rest = groups.filter(x => x.id !== id)
+    if (!rest.length) rest = [{ id: uid(), title: '排行榜', items: [] }]
+    setGroups(rest)
+    if (activeId === id) setActiveId(rest[Math.min(idx, rest.length - 1)].id)
+    toast('已删除分组')
+  }
 
   const addItem = item => {
-    setItems(prev => [...prev, item])
+    mutateItems(prev => [...prev, item])
+  }
+
+  const addTextItem = () => {
+    const names = new Set(items.filter(i => i.tier === POOL_TIER).map(i => i.name))
+    let n = 1
+    while (names.has(`条目 ${n}`)) n++
+    addItem({ id: uid(), name: `条目 ${n}`, note: '', tier: POOL_TIER, src: null })
+    toast('已添加文字条目')
   }
 
   const moveItem = (id, tierKey, beforeId) => {
-    setItems(prev => {
+    mutateItems(prev => {
       const idx = prev.findIndex(i => i.id === id)
       if (idx < 0) return prev
       const it = { ...prev[idx], tier: tierKey }
@@ -62,7 +131,11 @@ export default function App() {
     })
   }
 
-  const deleteItem = id => setItems(prev => prev.filter(i => i.id !== id))
+  const moveItemsToTier = (ids, tierKey) => {
+    ids.forEach(id => moveItem(id, tierKey, null))
+  }
+
+  const deleteItem = id => mutateItems(prev => prev.filter(i => i.id !== id))
 
   const addFiles = async (files, tierKey) => {
     const added = []
@@ -74,18 +147,18 @@ export default function App() {
       } catch { failed = true }
     }
     if (failed) toast('有文件读取失败')
-    if (added.length) setItems(prev => [...prev, ...added])
+    if (added.length) mutateItems(prev => [...prev, ...added])
     toast(`已添加 ${files.length} 个条目`)
   }
 
   const saveEdit = (id, patch) => {
-    setItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)))
+    mutateItems(prev => prev.map(i => (i.id === id ? { ...i, ...patch } : i)))
     closeEdit()
     toast('已保存')
   }
 
   const deleteEdit = id => {
-    setItems(prev => prev.filter(i => i.id !== id))
+    mutateItems(prev => prev.filter(i => i.id !== id))
     closeEdit()
     toast('已删除')
   }
@@ -98,17 +171,16 @@ export default function App() {
     try { data = JSON.parse(await file.text()) }
     catch { return toast('文件不是有效的 JSON') }
     if (!data || !Array.isArray(data.items)) return toast('文件格式不正确')
-    const keys = new Set(TIERS.map(t => t.key))
-    const list = data.items.filter(it => it && it.id && typeof it.name === 'string').map(it => ({
-      id: it.id,
-      name: it.name,
-      note: typeof it.note === 'string' ? it.note : '',
-      tier: keys.has(it.tier) ? it.tier : 'rsr',
-      src: typeof it.src === 'string' ? it.src : null,
-    }))
-    if (!confirm(`将导入 ${list.length} 项，覆盖当前 ${items.length} 项，继续？`)) return
-    setItems(list)
-    if (typeof data.title === 'string' && data.title) setTitle(data.title)
+    const list = normalizeItems(data.items)
+    if (!list.length) return toast('文件中没有有效条目')
+    const g = {
+      id: uid(),
+      title: typeof data.title === 'string' && data.title.trim() ? data.title.trim() : '导入的排行榜',
+      items: list,
+    }
+    if (!confirm(`将导入为新分组「${g.title}」，共 ${list.length} 项，继续？`)) return
+    setGroups(prev => [...prev, g])
+    setActiveId(g.id)
     toast(`已导入 ${list.length} 项`)
   }
 
@@ -118,26 +190,36 @@ export default function App() {
     <>
       <Blobs />
       <div className="scroller">
-        <TopBar
-          title={title}
-          count={items.length}
-          onTitleCommit={setTitle}
-          onCopy={() => copyPNG(items, title, toast)}
-          onDownloadPNG={() => downloadPNG(items, title, toast)}
-          onExportJSON={() => downloadJSON(items, title, toast)}
-          onImportJSON={handleImport}
-        />
+        <div className="page-head">
+          <GroupTabs
+            groups={groups}
+            activeId={activeId}
+            onSelect={selectGroup}
+            onCreate={createGroup}
+            onDelete={removeGroup}
+          />
+          <TopBar
+            title={title}
+            count={rankCount}
+            onTitleCommit={commitTitle}
+            onCopy={() => copyPNG(items, title, toast)}
+            onDownloadPNG={() => downloadPNG(items, title, toast)}
+            onExportJSON={() => downloadJSON(items, title, toast)}
+            onImportJSON={handleImport}
+          />
+        </div>
         <div className="mx-auto max-w-[1280px]">
-          <Adder onAdd={addItem} />
           <Board
             items={items}
             onMove={moveItem}
+            onMoveMany={moveItemsToTier}
             onAddFiles={addFiles}
             onDelete={deleteItem}
             onEdit={openEdit}
+            onAddItem={addTextItem}
             onPreview={(it, el) => setLightbox({ item: it, originEl: el })}
           />
-          <p className="mt-3 text-center text-[12.5px] text-[#64748b]">拖拽换级排序 · 点击图片预览 · 双击名称编辑 · 支持拖入图片文件</p>
+          <p className="mt-3 text-center text-[12.5px] text-[#64748b]">上传图片进待选区 · 拖到等级行定级 · 双击编辑 · 点击图片预览</p>
         </div>
       </div>
       <EditModal modal={editModal} onClose={closeEdit} onSave={saveEdit} onDelete={deleteEdit} />
