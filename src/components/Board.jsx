@@ -25,6 +25,8 @@ function Card({ item, tier }) {
 export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete, onEdit, onPreview, onAddItem }) {
   const dragIdRef = useRef(null)
   const ghostRef = useRef(null)
+  const grabRef = useRef({ x: 0, y: 0 })
+  const dragImgRef = useRef(null)
 
   const clearOver = () => {
     document.querySelectorAll('.tier-row.over, .pool-zone.over').forEach(el => el.classList.remove('over'))
@@ -32,6 +34,11 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
 
   useEffect(() => {
     const onDocDragOver = e => {
+      const g = ghostRef.current
+      if (g && dragIdRef.current) {
+        const { x, y } = grabRef.current
+        g.style.transform = `translate3d(${e.clientX - x}px, ${e.clientY - y}px, 0)`
+      }
       if (!dragIdRef.current) return
       const scroller = document.querySelector('.scroller')
       if (!scroller) return
@@ -60,14 +67,24 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     const ghost = card.cloneNode(true)
     ghost.classList.remove('dragging')
     ghost.classList.add('drag-ghost')
+    const gx = e.clientX - rect.left
+    const gy = e.clientY - rect.top
+    grabRef.current = { x: gx, y: gy }
+    ghost.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`
     document.body.appendChild(ghost)
     ghostRef.current = ghost
-    e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top)
+    if (dragImgRef.current) dragImgRef.current.remove()
+    const dot = document.createElement('div')
+    dot.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:transparent;pointer-events:none;'
+    document.body.appendChild(dot)
+    dragImgRef.current = dot
+    e.dataTransfer.setDragImage(dot, 0, 0)
   }
 
-  const handleDragEnd = () => {
+  const endDrag = () => {
     dragIdRef.current = null
     if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null }
+    if (dragImgRef.current) { dragImgRef.current.remove(); dragImgRef.current = null }
     document.querySelectorAll('.dragging').forEach(c => c.classList.remove('dragging'))
     clearDropMark()
     requestAnimationFrame(clearDropMark)
@@ -135,6 +152,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       if (!dragIdRef.current) return
       onMove(dragIdRef.current, row.dataset.key, row.dataset.beforeId || null)
       row.dataset.beforeId = ''
+      endDrag()
       return
     }
     if (pool) {
@@ -144,6 +162,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       if (files.length) { onAddFiles(files, POOL_TIER); return }
       if (dragIdRef.current) onMove(dragIdRef.current, POOL_TIER, pool.dataset.beforeId || null)
       pool.dataset.beforeId = ''
+      endDrag()
     }
   }
 
@@ -178,7 +197,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragEnd={endDrag}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
