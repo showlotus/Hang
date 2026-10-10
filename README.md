@@ -4,7 +4,7 @@
 
 基于 React + Vite + Tailwind CSS 构建，液态玻璃拟态界面，数据保存在浏览器本地。
 
-![封面](screenshot.png)
+![封面](screenshot.jpg)
 
 ## 功能特性
 

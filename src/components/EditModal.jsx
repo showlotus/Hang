@@ -69,6 +69,7 @@ export default function EditModal({ modal, onClose, onSave, onDelete }) {
     >
       <div className="modal">
         <h3>编辑</h3>
+        <button className="card-del modal-close" type="button" title="关闭" onClick={onClose}>✕</button>
         {modal && <EditForm key={modal.item.id + ':' + modal.seq} item={modal.item} onSave={onSave} onDelete={onDelete} />}
       </div>
     </div>

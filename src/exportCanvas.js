@@ -1,13 +1,15 @@
 import { FONT, POOL_TIER, TIERS } from './constants.js'
 import { hexA, loadImage, mixHex, rr, truncate } from './utils.js'
 
-export async function buildCanvas(items, title) {
-  const W = 1800, pad = 48, labelW = 170, gap = 14
-  const rowPad = 16, innerGap = 16, cardGap = 13, itemsPad = 3
-  const cellW = 170, cellH = 228
-  const headerH = 118, footerH = 58
-  const availW = W - pad * 2 - rowPad * 2 - labelW - innerGap - itemsPad * 2
-  const maxPer = Math.max(1, Math.floor((availW + gap) / (cellW + gap)))
+const preferMobile = () => typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches
+
+export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile' : 'desktop') {
+  const M = mode === 'mobile'
+  const W = M ? 1080 : 1800, pad = M ? 36 : 48, labelW = M ? 64 : 170, gap = M ? 22 : 14
+  const rowPad = M ? 20 : 16, innerGap = M ? 20 : 16, cardGap = M ? 28 : 13, itemsPad = M ? 4 : 3
+  const cellW = M ? 273 : 170, cellH = M ? 366 : 228
+  const headerH = M ? 120 : 118, footerH = 58
+  const maxPer = M ? 3 : Math.max(1, Math.floor((W - pad * 2 - rowPad * 2 - labelW - innerGap - itemsPad * 2 + gap) / (cellW + gap)))
   const ranked = items.filter(i => i.tier !== POOL_TIER)
 
   const imgs = {}
@@ -43,11 +45,11 @@ export async function buildCanvas(items, title) {
 
   ctx.textAlign = 'left'
   ctx.fillStyle = '#0f172a'
-  ctx.font = `800 46px ${FONT}`
-  ctx.fillText(title.trim() || '排行榜', pad, pad + 48)
+  ctx.font = `800 ${M ? 52 : 46}px ${FONT}`
+  ctx.fillText(title.trim() || '排行榜', pad, pad + (M ? 54 : 48))
   ctx.fillStyle = '#64748b'
-  ctx.font = `500 21px ${FONT}`
-  ctx.fillText(`从夯到拉 · RANK LIST · 共 ${ranked.length} 项`, pad, pad + 88)
+  ctx.font = `500 ${M ? 26 : 21}px ${FONT}`
+  ctx.fillText(`从夯到拉 · RANK LIST · 共 ${ranked.length} 项`, pad, pad + (M ? 98 : 88))
 
   let y = pad + headerH
   rows.forEach((rowItems, idx) => {
@@ -76,36 +78,99 @@ export async function buildCanvas(items, title) {
 
     const lx = pad + rowPad
     const ly = y + rowPad
-    const labelH = Math.min(rowH - rowPad * 2, cellH)
-    rr(ctx, lx, ly, labelW, labelH, 24)
-    ctx.save()
-    ctx.shadowColor = hexA(t.c1, .45)
-    ctx.shadowBlur = 16
-    ctx.shadowOffsetY = 6
-    const lb = ctx.createLinearGradient(0, ly, 0, ly + labelH)
-    lb.addColorStop(0, hexA(t.c1, .36))
-    lb.addColorStop(1, hexA(t.c2, .28))
-    ctx.fillStyle = lb
-    ctx.fill()
-    ctx.restore()
-    const lh = ctx.createLinearGradient(0, ly, 0, ly + labelH)
-    lh.addColorStop(0, 'rgba(255,255,255,.42)')
-    lh.addColorStop(.48, 'rgba(255,255,255,.08)')
-    lh.addColorStop(1, 'rgba(255,255,255,.2)')
-    ctx.fillStyle = lh
-    ctx.fill()
-    rr(ctx, lx + 1, ly + 1, labelW - 2, labelH - 2, 23)
-    ctx.strokeStyle = 'rgba(255,255,255,.5)'
-    ctx.lineWidth = 2
-    ctx.stroke()
-    ctx.textAlign = 'center'
-    ctx.fillStyle = mixHex(t.c1, '#0f172a', .62)
-    ctx.font = `800 31px ${FONT}`
-    ctx.fillText(t.label, lx + labelW / 2, ly + labelH / 2 - 2)
-    ctx.font = `600 15px ${FONT}`
-    ctx.globalAlpha = .78
-    ctx.fillText(t.desc, lx + labelW / 2, ly + labelH / 2 + 26)
-    ctx.globalAlpha = 1
+    if (M) {
+      const spineY = ly + itemsPad
+      const spineH = cellH
+      const spineR = 28
+      rr(ctx, lx, spineY, labelW, spineH, spineR)
+      ctx.save()
+      ctx.shadowColor = hexA(t.c1, .45)
+      ctx.shadowBlur = 16
+      ctx.shadowOffsetY = 6
+      const sb = ctx.createLinearGradient(0, spineY, 0, spineY + spineH)
+      sb.addColorStop(0, hexA(t.c1, .36))
+      sb.addColorStop(1, hexA(t.c2, .28))
+      ctx.fillStyle = sb
+      ctx.fill()
+      ctx.restore()
+      rr(ctx, lx, spineY, labelW, spineH, spineR)
+      const sl = ctx.createLinearGradient(0, spineY, 0, spineY + spineH)
+      sl.addColorStop(0, 'rgba(255,255,255,.42)')
+      sl.addColorStop(.48, 'rgba(255,255,255,.08)')
+      sl.addColorStop(1, 'rgba(255,255,255,.2)')
+      ctx.fillStyle = sl
+      ctx.fill()
+      rr(ctx, lx + 1, spineY + 1, labelW - 2, spineH - 2, spineR - 1)
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+      const fs = 34, dfs = 21, vGap = 16
+      const cx = lx + labelW / 2
+      ctx.textAlign = 'center'
+      ctx.fillStyle = mixHex(t.c1, '#0f172a', .62)
+      const lChars = [...t.label]
+      const dChars = [...t.desc]
+      const lbh = fs * 1.25, dlh = dfs * 1.2
+      if (/[\u4e00-\u9fa5]/.test(t.label)) {
+        ctx.font = `800 ${fs}px ${FONT}`
+        const contentH = (lChars.length - 1) * lbh + fs + vGap + (dChars.length - 1) * dlh + dfs
+        let base = spineY + (spineH - contentH) / 2 + fs * .8
+        lChars.forEach((ch, i) => ctx.fillText(ch, cx, base + i * lbh))
+        ctx.font = `600 ${dfs}px ${FONT}`
+        ctx.globalAlpha = .78
+        base += (lChars.length - 1) * lbh + vGap + dfs * .8
+        dChars.forEach((ch, i) => ctx.fillText(ch, cx, base + i * dlh))
+        ctx.globalAlpha = 1
+      } else {
+        ctx.font = `800 ${fs}px ${FONT}`
+        const sideLen = ctx.measureText(t.label).width
+        const descH = (dChars.length - 1) * dlh + dfs
+        const gapY = 16
+        const top = spineY + (spineH - (sideLen + gapY + descH)) / 2
+        ctx.save()
+        ctx.translate(cx, top + sideLen / 2)
+        ctx.rotate(Math.PI / 2)
+        ctx.textBaseline = 'middle'
+        ctx.fillText(t.label, 0, 0)
+        ctx.restore()
+        ctx.font = `600 ${dfs}px ${FONT}`
+        ctx.globalAlpha = .78
+        let dbase = top + sideLen + gapY + dfs * .8
+        dChars.forEach((ch, i) => ctx.fillText(ch, cx, dbase + i * dlh))
+        ctx.globalAlpha = 1
+      }
+    } else {
+      const labelH = Math.min(rowH - rowPad * 2, cellH)
+      rr(ctx, lx, ly, labelW, labelH, 24)
+      ctx.save()
+      ctx.shadowColor = hexA(t.c1, .45)
+      ctx.shadowBlur = 16
+      ctx.shadowOffsetY = 6
+      const lb = ctx.createLinearGradient(0, ly, 0, ly + labelH)
+      lb.addColorStop(0, hexA(t.c1, .36))
+      lb.addColorStop(1, hexA(t.c2, .28))
+      ctx.fillStyle = lb
+      ctx.fill()
+      ctx.restore()
+      const lh = ctx.createLinearGradient(0, ly, 0, ly + labelH)
+      lh.addColorStop(0, 'rgba(255,255,255,.42)')
+      lh.addColorStop(.48, 'rgba(255,255,255,.08)')
+      lh.addColorStop(1, 'rgba(255,255,255,.2)')
+      ctx.fillStyle = lh
+      ctx.fill()
+      rr(ctx, lx + 1, ly + 1, labelW - 2, labelH - 2, 23)
+      ctx.strokeStyle = 'rgba(255,255,255,.5)'
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.textAlign = 'center'
+      ctx.fillStyle = mixHex(t.c1, '#0f172a', .62)
+      ctx.font = `800 31px ${FONT}`
+      ctx.fillText(t.label, lx + labelW / 2, ly + labelH / 2 - 2)
+      ctx.font = `600 15px ${FONT}`
+      ctx.globalAlpha = .78
+      ctx.fillText(t.desc, lx + labelW / 2, ly + labelH / 2 + 26)
+      ctx.globalAlpha = 1
+    }
 
     const zoneX = lx + labelW + innerGap
     rowItems.forEach((it, i) => {
@@ -113,7 +178,8 @@ export async function buildCanvas(items, title) {
       const x = zoneX + itemsPad + col * (cellW + cardGap)
       const cy = y + rowPad + itemsPad + rowLine * (cellH + cardGap)
 
-      rr(ctx, x, cy, cellW, cellH, 24)
+      const cardR = M ? 36 : 24
+      rr(ctx, x, cy, cellW, cellH, cardR)
       ctx.save()
       ctx.shadowColor = hexA(t.c1, .45)
       ctx.shadowBlur = 16
@@ -124,7 +190,7 @@ export async function buildCanvas(items, title) {
       ctx.fillStyle = slab
       ctx.fill()
       ctx.restore()
-      rr(ctx, x + 1, cy + 1, cellW - 2, cellH - 2, 23)
+      rr(ctx, x + 1, cy + 1, cellW - 2, cellH - 2, cardR - 1)
       ctx.strokeStyle = 'rgba(255,255,255,.55)'
       ctx.lineWidth = 2
       ctx.stroke()
@@ -132,10 +198,10 @@ export async function buildCanvas(items, title) {
       ctx.save()
       ctx.beginPath()
       ctx.moveTo(x, cy + cellW)
-      ctx.lineTo(x, cy + 24)
-      ctx.arcTo(x, cy, x + 24, cy, 24)
-      ctx.lineTo(x + cellW - 24, cy)
-      ctx.arcTo(x + cellW, cy, x + cellW, cy + 24, 24)
+      ctx.lineTo(x, cy + cardR)
+      ctx.arcTo(x, cy, x + cardR, cy, cardR)
+      ctx.lineTo(x + cellW - cardR, cy)
+      ctx.arcTo(x + cellW, cy, x + cellW, cy + cardR, cardR)
       ctx.lineTo(x + cellW, cy + cellW)
       ctx.closePath()
       ctx.clip()
@@ -165,12 +231,12 @@ export async function buildCanvas(items, title) {
 
       ctx.textAlign = 'center'
       ctx.fillStyle = '#0f172a'
-      ctx.font = `700 16px ${FONT}`
-      ctx.fillText(truncate(ctx, it.name, cellW - 16), x + cellW / 2, cy + cellW + 24)
+      ctx.font = `700 ${M ? 32 : 16}px ${FONT}`
+      ctx.fillText(truncate(ctx, it.name, cellW - (M ? 24 : 16)), x + cellW / 2, cy + cellW + (M ? 40 : 24))
       if (it.note) {
         ctx.fillStyle = '#64748b'
-        ctx.font = `500 14px ${FONT}`
-        ctx.fillText(truncate(ctx, it.note, cellW - 16), x + cellW / 2, cy + cellW + 46)
+        ctx.font = `500 ${M ? 22 : 14}px ${FONT}`
+        ctx.fillText(truncate(ctx, it.note, cellW - (M ? 24 : 16)), x + cellW / 2, cy + cellW + (M ? 84 : 46))
       }
     })
 
@@ -199,9 +265,9 @@ export async function copyPNG(items, title, toast) {
   }
 }
 
-export function downloadPNG(items, title, toast) {
+export function downloadPNG(items, title, toast, mode) {
   if (!items.some(i => i.tier !== POOL_TIER)) return toast('先添加几个条目吧')
-  buildCanvas(items, title).then(canvas => {
+  buildCanvas(items, title, mode).then(canvas => {
     canvas.toBlob(blob => {
       const a = document.createElement('a')
       const name = (title.trim() || '排行榜') + '.png'

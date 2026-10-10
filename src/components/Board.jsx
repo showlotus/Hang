@@ -193,7 +193,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
         const rowItems = items.filter(i => i.tier === t.key)
         return (
           <div key={t.key} className="tier-row" data-key={t.key} style={tierStyle(t)}>
-            <div className="tier-label"><b>{t.label}</b><span>{t.desc}</span></div>
+            <div className="tier-label"><b>{t.label}</b><i className="tier-sep">·</i><span>{t.desc}</span></div>
             <div className="tier-items flex min-h-[10.5rem] flex-1 flex-wrap content-start gap-2.5 p-0.5">
               {rowItems.length === 0 && <div className="tier-empty">拖入卡片</div>}
               {rowItems.map(it => <Card key={it.id} item={it} tier={t} />)}
