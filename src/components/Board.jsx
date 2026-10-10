@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { IS_TOUCH, POOL_TIER, TIERS } from '../constants.js'
 import { tierStyle } from '../utils.js'
 import ImagePool from './ImagePool.jsx'
@@ -9,7 +9,7 @@ const TOUCH_CANCEL_DIST = 10
 const TOUCH_START_DIST = 3
 const CLICK_GUARD_MS = 350
 
-function Card({ item, tier }) {
+function Card({ item, tier, confirming }) {
   return (
     <div className="card" data-id={item.id} draggable={!IS_TOUCH} style={tierStyle(tier)}>
       <div className="card-pic">
@@ -21,7 +21,15 @@ function Card({ item, tier }) {
       </div>
       <div className="card-name">{item.name}</div>
       <div className="card-note">{item.note || ''}</div>
-      <button className="card-del" type="button" title="删除">✕</button>
+      {item.src ? (
+        <button className="card-zoom" type="button" title="预览">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5C5 5 2 12 2 12s3 7 10 7 10-7 10-7-3-7-10-7Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
+          </svg>
+        </button>
+      ) : null}
+      <button className={'card-del' + (confirming ? ' confirm' : '')} type="button" title={confirming ? '再点一次确认删除' : '删除'}>{confirming ? '✓' : '✕'}</button>
     </div>
   )
 }
@@ -37,6 +45,8 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
   const clickGuardRef = useRef(0)
   const onMoveRef = useRef(onMove)
   const flipRef = useRef(null)
+  const [confirmDelId, setConfirmDelId] = useState(null)
+  const confirmTimerRef = useRef(null)
 
   useEffect(() => {
     onMoveRef.current = onMove
@@ -251,14 +261,29 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
   const handleClick = e => {
     const del = e.target.closest('.card-del')
     if (del) {
-      onDelete(del.closest('.card').dataset.id)
+      const id = del.closest('.card').dataset.id
+      if (confirmDelId !== id) {
+        setConfirmDelId(id)
+        clearTimeout(confirmTimerRef.current)
+        confirmTimerRef.current = setTimeout(() => setConfirmDelId(null), 3000)
+      } else {
+        clearTimeout(confirmTimerRef.current)
+        setConfirmDelId(null)
+        onDelete(id)
+      }
       return
     }
-    if (e.target.matches('.card-pic img')) {
-      const card = e.target.closest('.card')
+    if (confirmDelId) setConfirmDelId(null)
+    const zoom = e.target.closest('.card-zoom')
+    if (zoom) {
+      const card = zoom.closest('.card')
       const it = items.find(x => x.id === card.dataset.id)
-      if (it && it.src) onPreview(it, e.target)
+      const img = card.querySelector('.card-pic img')
+      if (it && it.src && img) onPreview(it, img)
+      return
     }
+    const card = e.target.closest('.card')
+    if (card) onEdit(card.dataset.id)
   }
 
   const handleContextMenu = e => {
@@ -332,6 +357,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
         if (zone && dragIdRef.current) dropOn(zone)
         else endDrag()
       } else {
+        if (t.ready) clickGuardRef.current = Date.now()
         cancelTouchHold()
       }
     }
@@ -373,7 +399,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     const card = e.target.closest('.card')
     if (!card) return
     if (!IS_TOUCH && !card.draggable) return
-    if (e.target.closest('.card-del')) return
+    if (e.target.closest('.card-del, .card-zoom')) return
     if (IS_TOUCH && card.querySelector('.pool-check')) return
     clearDragReady()
     if (e.pointerType === 'touch') {
@@ -384,18 +410,10 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     dragReadyTimerRef.current = setTimeout(() => markDragReady(card), DRAG_READY_DELAY)
   }
 
-  const handleDoubleClick = e => {
-    if (e.target.closest('.card-del')) return
-    if (e.target.matches('.card-pic img')) return
-    const card = e.target.closest('.card')
-    if (card) onEdit(card.dataset.id)
-  }
-
   return (
     <main
       className="mt-[1.125rem] flex flex-col gap-3"
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       onPointerDown={handlePointerDown}
       onDragStart={handleDragStart}
@@ -412,6 +430,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
         }}
         onDelete={onDelete}
         onAddItem={onAddItem}
+        confirmDelId={confirmDelId}
       />
       {TIERS.map(t => {
         const rowItems = items.filter(i => i.tier === t.key)
@@ -420,7 +439,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
             <div className="tier-label"><b>{t.label}</b><i className="tier-sep">·</i><span>{t.desc}</span></div>
             <div className="tier-items relative flex min-h-[10.75rem] flex-1 flex-wrap content-start gap-2.5 px-0.5">
               <div className={'tier-empty' + (rowItems.length === 0 ? ' show' : '')}>拖入项目</div>
-              {rowItems.map(it => <Card key={it.id} item={it} tier={t} />)}
+              {rowItems.map(it => <Card key={it.id} item={it} tier={t} confirming={confirmDelId === it.id} />)}
             </div>
           </div>
         )

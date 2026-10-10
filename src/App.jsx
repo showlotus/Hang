@@ -14,8 +14,8 @@ import { fileToDataURL, normalizeItems, uid } from './utils.js'
 const EMPTY = []
 
 const HINT = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-  ? '上传图片进待选区 · 长按拖动定级 · 双击编辑 · 点击图片预览'
-  : '上传图片进待选区 · 拖到等级行定级 · 双击编辑 · 点击图片预览'
+  ? '上传图片进待选区 · 长按拖动定级 · 单击编辑 · 点眼睛按钮预览图片'
+  : '上传图片进待选区 · 拖到等级行定级 · 单击编辑 · 点眼睛按钮预览图片'
 
 export default function App() {
   const [groups, setGroups] = useState([])
@@ -39,6 +39,12 @@ export default function App() {
       setReady(true)
     })
     return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    const onMove = () => document.body.classList.add('hover-live')
+    document.addEventListener('mousemove', onMove, { passive: true })
+    return () => document.removeEventListener('mousemove', onMove)
   }, [])
 
   const openEdit = id => {
@@ -139,7 +145,10 @@ export default function App() {
     ids.forEach(id => moveItem(id, tierKey, null))
   }
 
-  const deleteItem = id => mutateItems(prev => prev.filter(i => i.id !== id))
+  const deleteItem = id => {
+    document.body.classList.remove('hover-live')
+    mutateItems(prev => prev.filter(i => i.id !== id))
+  }
 
   const addFiles = async (files, tierKey) => {
     const added = []
@@ -162,6 +171,7 @@ export default function App() {
   }
 
   const deleteEdit = id => {
+    document.body.classList.remove('hover-live')
     mutateItems(prev => prev.filter(i => i.id !== id))
     closeEdit()
     toast('已删除')

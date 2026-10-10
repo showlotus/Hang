@@ -101,3 +101,4 @@ export const thumbOf = id => {
   const el = document.querySelector(`.card[data-id="${id}"] .card-pic img`)
   return el && el.isConnected ? el : null
 }
+

@@ -4,7 +4,7 @@ import Chevron from './Chevron.jsx'
 import PopMenu from './PopMenu.jsx'
 import { useHoverMenu } from '../hooks.js'
 
-export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onAddItem }) {
+export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onAddItem, confirmDelId }) {
   const [open, setOpen] = useState(true)
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
@@ -165,7 +165,7 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
                   {selectMode && (
                     <span className={'pool-check' + (selected.has(it.id) ? ' on' : '')}>{selected.has(it.id) ? '✓' : ''}</span>
                   )}
-                  <button className="card-del" type="button" title="删除">✕</button>
+                  <button className={'card-del' + (confirmDelId === it.id ? ' confirm' : '')} type="button" title={confirmDelId === it.id ? '再点一次确认删除' : '删除'}>{confirmDelId === it.id ? '✓' : '✕'}</button>
                 </div>
               ))}
             </div>
