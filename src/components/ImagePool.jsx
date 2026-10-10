@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { POOL_TIER, TIERS } from '../constants.js'
 import Chevron from './Chevron.jsx'
 import PopMenu from './PopMenu.jsx'
@@ -17,6 +17,8 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
     show: showTierMenu, hideLater: hideTierMenu,
   } = useHoverMenu()
   const inputRef = useRef(null)
+  const gridRef = useRef(null)
+  const heightRef = useRef(null)
 
   const allSelected = items.length > 0 && items.every(it => selected.has(it.id))
   const selectedIds = () => items.filter(it => selected.has(it.id)).map(it => it.id)
@@ -59,6 +61,17 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
     const imgs = [...files].filter(f => f.type.startsWith('image/'))
     if (imgs.length) onAddFiles(imgs, POOL_TIER)
   }
+
+  useEffect(() => {
+    const grid = gridRef.current
+    const wrap = heightRef.current
+    if (!grid || !wrap) return
+    const sync = () => { wrap.style.height = grid.offsetHeight + 'px' }
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(grid)
+    return () => ro.disconnect()
+  }, [])
 
   return (
     <section className={'pool-zone' + (open ? '' : ' collapsed')}>
@@ -123,37 +136,39 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
       </div>
       <div className={'pool-collapse' + (open ? ' open' : '')}>
         <div className="pool-clip">
-          <div className="pool-grid">
-            {items.length === 0 && (
-              <div className="pool-empty">上传图片或拖入图片文件，也可添加文字条目，再拖到下方等级行</div>
-            )}
-          {items.map(it => (
-            <div
-              key={it.id}
-              className={'card pool-card' + (selected.has(it.id) ? ' selected' : '')}
-              data-id={it.id}
-              draggable={!selectMode}
-              onClick={e => {
-                if (e.target.closest('.card-del')) return
-                if (!selectMode) return
-                e.stopPropagation()
-                toggleSelect(it.id)
-              }}
-            >
-              <div className="card-pic">
-                {it.src ? (
-                  <img src={it.src} alt="" />
-                ) : (
-                  <div className="fallback">{(it.name || '?').trim().charAt(0)}</div>
-                )}
-              </div>
-              <div className="card-name">{it.name}</div>
-              {selectMode && (
-                <span className={'pool-check' + (selected.has(it.id) ? ' on' : '')}>{selected.has(it.id) ? '✓' : ''}</span>
+          <div className="pool-height" ref={heightRef}>
+            <div className="pool-grid" ref={gridRef}>
+              {items.length === 0 && (
+                <div className="pool-empty">上传图片或拖入图片文件，也可添加文字条目，再拖到下方等级行</div>
               )}
-              <button className="card-del" type="button" title="删除">✕</button>
+              {items.map(it => (
+                <div
+                  key={it.id}
+                  className={'card pool-card' + (selected.has(it.id) ? ' selected' : '')}
+                  data-id={it.id}
+                  draggable={!selectMode}
+                  onClick={e => {
+                    if (e.target.closest('.card-del')) return
+                    if (!selectMode) return
+                    e.stopPropagation()
+                    toggleSelect(it.id)
+                  }}
+                >
+                  <div className="card-pic">
+                    {it.src ? (
+                      <img src={it.src} alt="" />
+                    ) : (
+                      <div className="fallback">{(it.name || '?').trim().charAt(0)}</div>
+                    )}
+                  </div>
+                  <div className="card-name">{it.name}</div>
+                  {selectMode && (
+                    <span className={'pool-check' + (selected.has(it.id) ? ' on' : '')}>{selected.has(it.id) ? '✓' : ''}</span>
+                  )}
+                  <button className="card-del" type="button" title="删除">✕</button>
+                </div>
+              ))}
             </div>
-          ))}
           </div>
         </div>
       </div>

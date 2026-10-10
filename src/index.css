@@ -525,7 +525,8 @@ body {
 .pool-collapse.open { grid-template-rows: 1fr; visibility: visible; }
 .pool-collapse .pool-clip { overflow: hidden; min-height: 0; }
 .pool-collapse.open .pool-clip { overflow: visible; transition: overflow 0s .42s; }
-.pool-grid { display: flex; flex-wrap: wrap; gap: 0.625rem; padding: 0.875rem 0.875rem 1.25rem; margin: 0 -0.75rem; }
+.pool-height { transition: height .35s var(--ease-out); }
+.pool-grid { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 0.875rem; }
 .pool-card { --c1: var(--accent); --c2: #0561c9; cursor: pointer; }
 .pool-card.selected {
   background:
