@@ -13,6 +13,10 @@ import { fileToDataURL, normalizeItems, uid } from './utils.js'
 
 const EMPTY = []
 
+const HINT = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+  ? '上传图片进待选区 · 长按拖动定级 · 双击编辑 · 点击图片预览'
+  : '上传图片进待选区 · 拖到等级行定级 · 双击编辑 · 点击图片预览'
+
 export default function App() {
   const [groups, setGroups] = useState([])
   const [activeId, setActiveId] = useState(null)
@@ -208,7 +212,7 @@ export default function App() {
             onImportJSON={handleImport}
           />
         </div>
-        <div className="mx-auto max-w-[1280px]">
+        <div className="mx-auto max-w-[80rem]">
           <Board
             items={items}
             onMove={moveItem}
@@ -219,7 +223,7 @@ export default function App() {
             onAddItem={addTextItem}
             onPreview={(it, el) => setLightbox({ item: it, originEl: el })}
           />
-          <p className="mt-3 text-center text-[12.5px] text-[#64748b]">上传图片进待选区 · 拖到等级行定级 · 双击编辑 · 点击图片预览</p>
+          <p className="mt-3 text-center text-[0.78125rem] text-[#64748b]">{HINT}</p>
         </div>
       </div>
       <EditModal modal={editModal} onClose={closeEdit} onSave={saveEdit} onDelete={deleteEdit} />

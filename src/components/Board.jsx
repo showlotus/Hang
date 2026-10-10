@@ -3,6 +3,8 @@ import { POOL_TIER, TIERS } from '../constants.js'
 import { tierStyle } from '../utils.js'
 import ImagePool from './ImagePool.jsx'
 
+const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+
 function Card({ item, tier }) {
   return (
     <div className="card" data-id={item.id} draggable style={tierStyle(tier)}>
@@ -158,6 +160,10 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     }
   }
 
+  const handleContextMenu = e => {
+    if (TOUCH && e.target.closest('.card')) e.preventDefault()
+  }
+
   const handleDoubleClick = e => {
     if (e.target.closest('.card-del')) return
     if (e.target.matches('.card-pic img')) return
@@ -167,9 +173,10 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
 
   return (
     <main
-      className="mt-[18px] flex flex-col gap-3"
+      className="mt-[1.125rem] flex flex-col gap-3"
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
@@ -187,7 +194,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
         return (
           <div key={t.key} className="tier-row" data-key={t.key} style={tierStyle(t)}>
             <div className="tier-label"><b>{t.label}</b><span>{t.desc}</span></div>
-            <div className="tier-items flex min-h-[168px] flex-1 flex-wrap content-start gap-2.5 p-0.5">
+            <div className="tier-items flex min-h-[10.5rem] flex-1 flex-wrap content-start gap-2.5 p-0.5">
               {rowItems.length === 0 && <div className="tier-empty">拖入卡片</div>}
               {rowItems.map(it => <Card key={it.id} item={it} tier={t} />)}
             </div>

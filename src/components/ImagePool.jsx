@@ -72,7 +72,7 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
             return !v
           })}
         >
-          <span className="pool-toggle-arrow"><Chevron size={18} /></span>
+          <span className="pool-toggle-arrow"><Chevron size="1.125rem" /></span>
         </button>
         <span className="pool-title">待选区</span>
         <span className="pool-count">{items.length} 项</span>

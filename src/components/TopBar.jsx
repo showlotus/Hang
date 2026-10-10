@@ -23,6 +23,7 @@ export default function TopBar({ title, count, onTitleCommit, onCopy, onDownload
   const commit = () => {
     const h1 = h1Ref.current
     if (!h1.textContent.trim()) h1.innerHTML = ''
+    h1.scrollLeft = 0
     onTitleCommit(h1.textContent)
   }
 
@@ -44,10 +45,10 @@ export default function TopBar({ title, count, onTitleCommit, onCopy, onDownload
         ></h1>
         <div className="subtitle">从夯到拉 · RANK LIST · 共 {count} 项</div>
       </div>
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex shrink-0 items-center gap-2.5">
         <div className="pop-wrap" ref={jsonWrapRef}>
           <button
-            className="btn"
+            className="btn pool-btn"
             type="button"
             onClick={() => (jsonOpen ? setJsonOpen(false) : showJsonMenu())}
             onMouseEnter={() => showJsonMenu()}
@@ -70,7 +71,7 @@ export default function TopBar({ title, count, onTitleCommit, onCopy, onDownload
         </div>
         <div className="pop-wrap" ref={pngWrapRef}>
           <button
-            className="btn primary"
+            className="btn primary pool-btn"
             type="button"
             onClick={() => (pngOpen ? setPngOpen(false) : showPngMenu())}
             onMouseEnter={() => showPngMenu()}
