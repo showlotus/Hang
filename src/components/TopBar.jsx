@@ -43,7 +43,7 @@ export default function TopBar({ title, count, onTitleCommit, onCopy, onDownload
             }
           }}
         ></h1>
-        <div className="subtitle">从夯到拉 · RANK LIST · 共 {count} 项</div>
+        <div className="subtitle">从夯到拉 · 共 {count} 项</div>
       </div>
       <div className="flex shrink-0 items-center gap-2.5">
         <div className="pop-wrap" ref={jsonWrapRef}>

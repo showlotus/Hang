@@ -137,12 +137,29 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     else if (window.innerHeight - clientY < m) scroller.scrollBy(0, 14)
   }
 
-  const markInsert = (zone, clientX) => {
+  const markInsert = (zone, clientX, clientY) => {
     const cards = [...zone.querySelectorAll('.card')].filter(c => c.dataset.id !== dragIdRef.current)
-    let beforeId = null
+    const lines = []
     for (const c of cards) {
       const r = c.getBoundingClientRect()
-      if (clientX < r.left + r.width / 2) { beforeId = c.dataset.id; break }
+      const line = lines.find(l => Math.abs(l.top - r.top) < r.height / 2)
+      if (line) line.items.push({ id: c.dataset.id, midX: r.left + r.width / 2 })
+      else lines.push({ top: r.top, height: r.height, items: [{ id: c.dataset.id, midX: r.left + r.width / 2 }] })
+    }
+    let beforeId = null
+    if (lines.length) {
+      let line = lines[0]
+      for (const l of lines) {
+        if (Math.abs(clientY - (l.top + l.height / 2)) < Math.abs(clientY - (line.top + line.height / 2))) line = l
+      }
+      const hit = line.items.find(it => clientX < it.midX)
+      if (hit) {
+        beforeId = hit.id
+      } else {
+        const lastId = line.items[line.items.length - 1].id
+        const next = cards[cards.findIndex(c => c.dataset.id === lastId) + 1]
+        beforeId = next ? next.dataset.id : null
+      }
     }
     document.querySelectorAll('.drop-before').forEach(c => c.classList.remove('drop-before'))
     if (beforeId) {
@@ -152,12 +169,12 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     zone.dataset.beforeId = beforeId || ''
   }
 
-  const hoverDropZone = (zone, clientX) => {
+  const hoverDropZone = (zone, clientX, clientY) => {
     if (!zone) return
     clearOver()
     zone.classList.add('over')
     tintGhost(zone.classList.contains('pool-zone') ? 'pool' : zone)
-    markInsert(zone, clientX)
+    markInsert(zone, clientX, clientY)
   }
 
   const spawnGhost = (card, clientX, clientY) => {
@@ -166,6 +183,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     const ghost = card.cloneNode(true)
     ghost.classList.remove('dragging')
     ghost.classList.add('drag-ghost')
+    ghost.style.width = `${rect.width}px`
     grabRef.current = { x: clientX - rect.left, y: clientY - rect.top }
     ghost.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`
     document.body.appendChild(ghost)
@@ -243,7 +261,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     }
     if (!zone) return
     e.preventDefault()
-    hoverDropZone(zone, e.clientX)
+    hoverDropZone(zone, e.clientX, e.clientY)
   }
 
   const handleDrop = e => {
@@ -283,7 +301,15 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       return
     }
     const card = e.target.closest('.card')
-    if (card) onEdit(card.dataset.id)
+    if (card) {
+      if (IS_TOUCH && e.target.closest('.card-pic')) {
+        const it = items.find(x => x.id === card.dataset.id)
+        const img = card.querySelector('.card-pic img')
+        if (it && it.src && img) onPreview(it, img)
+        return
+      }
+      onEdit(card.dataset.id)
+    }
   }
 
   const handleContextMenu = e => {
@@ -344,7 +370,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       }
       autoScroll(e.clientY)
       const zone = document.elementFromPoint(e.clientX, e.clientY)?.closest('.tier-row, .pool-zone') || null
-      hoverDropZone(zone, e.clientX)
+      hoverDropZone(zone, e.clientX, e.clientY)
     }
 
     const onPointerUp = e => {

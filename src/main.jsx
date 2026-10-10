@@ -4,6 +4,8 @@ import './index.css'
 import App from './App.jsx'
 import { ToastProvider } from './components/Toast.jsx'
 
+document.addEventListener('touchstart', () => {}, { passive: true })
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ToastProvider>

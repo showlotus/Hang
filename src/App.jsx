@@ -14,8 +14,8 @@ import { fileToDataURL, normalizeItems, uid } from './utils.js'
 const EMPTY = []
 
 const HINT = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-  ? '上传图片进待选区 · 长按拖动定级 · 单击编辑 · 点眼睛按钮预览图片'
-  : '上传图片进待选区 · 拖到等级行定级 · 单击编辑 · 点眼睛按钮预览图片'
+  ? '长按拖动或批量定级 · 单击编辑 · 点图片预览'
+  : '拖动或批量定级排序 · 单击编辑 · 点眼睛预览'
 
 export default function App() {
   const [groups, setGroups] = useState([])
@@ -204,14 +204,14 @@ export default function App() {
     <>
       <Blobs />
       <div className="scroller">
+        <GroupTabs
+          groups={groups}
+          activeId={activeId}
+          onSelect={selectGroup}
+          onCreate={createGroup}
+          onDelete={removeGroup}
+        />
         <div className="page-head">
-          <GroupTabs
-            groups={groups}
-            activeId={activeId}
-            onSelect={selectGroup}
-            onCreate={createGroup}
-            onDelete={removeGroup}
-          />
           <TopBar
             title={title}
             count={rankCount}
@@ -237,7 +237,7 @@ export default function App() {
         </div>
       </div>
       <EditModal modal={editModal} onClose={closeEdit} onSave={saveEdit} onDelete={deleteEdit} />
-      <Lightbox state={lightbox} onClose={() => setLightbox(null)} />
+      <Lightbox state={lightbox} onClose={() => setLightbox(null)} onEdit={openEdit} />
     </>
   )
 }

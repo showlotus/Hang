@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { flipTo, thumbOf } from '../utils.js'
 
-export default function Lightbox({ state, onClose }) {
+export default function Lightbox({ state, onClose, onEdit }) {
   const lbRef = useRef(null)
   const imgRef = useRef(null)
   const capRef = useRef(null)
@@ -46,6 +46,12 @@ export default function Lightbox({ state, onClose }) {
     onClose()
   }, [onClose])
 
+  const edit = useCallback(() => {
+    if (!state) return
+    close()
+    onEdit(state.item.id)
+  }, [state, close, onEdit])
+
   useEffect(() => {
     const onKey = e => { if (e.key === 'Escape') close() }
     addEventListener('keydown', onKey)
@@ -56,6 +62,7 @@ export default function Lightbox({ state, onClose }) {
     <div className="lightbox" ref={lbRef} onClick={close}>
       <img ref={imgRef} alt="预览图" />
       <div className="lightbox-cap" ref={capRef}></div>
+      <button className="lightbox-edit" type="button" onClick={edit}>编辑</button>
     </div>
   )
 }

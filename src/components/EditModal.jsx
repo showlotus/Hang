@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PicDrop from './PicDrop.jsx'
 import TierPicker from './TierPicker.jsx'
 import { useToast } from './ToastContext.jsx'
@@ -8,12 +8,29 @@ function EditForm({ item, onSave, onDelete }) {
   const [note, setNote] = useState(item.note || '')
   const [tier, setTier] = useState(item.tier)
   const [src, setSrc] = useState(item.src || null)
+  const [confirmDel, setConfirmDel] = useState(false)
+  const confirmTimer = useRef(null)
   const toast = useToast()
+
+  useEffect(() => () => clearTimeout(confirmTimer.current), [])
 
   const handleSave = () => {
     const n = name.trim()
     if (!n) return toast('名称不能为空')
+    setConfirmDel(false)
+    clearTimeout(confirmTimer.current)
     onSave(item.id, { name: n, note: note.trim(), tier, src })
+  }
+
+  const handleDelete = () => {
+    if (!confirmDel) {
+      setConfirmDel(true)
+      clearTimeout(confirmTimer.current)
+      confirmTimer.current = setTimeout(() => setConfirmDel(false), 3000)
+    } else {
+      clearTimeout(confirmTimer.current)
+      onDelete(item.id)
+    }
   }
 
   return (
@@ -46,7 +63,12 @@ function EditForm({ item, onSave, onDelete }) {
         <TierPicker value={tier} onChange={setTier} />
       </div>
       <div className="mt-1 flex justify-end gap-2.5">
-        <button className="btn danger" type="button" onClick={() => onDelete(item.id)}>删除</button>
+        <button
+          className={'btn danger' + (confirmDel ? ' confirm' : '')}
+          type="button"
+          title={confirmDel ? '再点一次确认删除' : '删除'}
+          onClick={handleDelete}
+        >{confirmDel ? '确认删除' : '删除'}</button>
         <button className="btn primary" type="button" onClick={handleSave}>保存</button>
       </div>
     </>

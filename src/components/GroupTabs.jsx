@@ -29,43 +29,45 @@ export default function GroupTabs({ groups, activeId, onSelect, onCreate, onDele
 
   return (
     <div className="group-tabs-row">
-      <div className="group-segs">
-        <span className="seg-thumb" style={{ transform: `translateX(${thumb.x}px)`, width: thumb.w }} aria-hidden="true" />
-        {groups.map(g => (
-          <button
-            key={g.id}
-            type="button"
-            ref={el => {
-              if (el) segRefs.current.set(g.id, el)
-              else segRefs.current.delete(g.id)
-            }}
-            className={'seg' + (g.id === activeId ? ' active' : '')}
-            onClick={() => onSelect(g.id)}
-            title={g.title}
-          >
-            <span className="seg-name">{g.title}</span>
-            <span className="seg-count">{g.items.filter(i => i.tier !== POOL_TIER).length}</span>
-            <span
-              className="seg-close"
-              role="button"
-              tabIndex={0}
-              title="删除分组"
-              onClick={e => {
-                e.stopPropagation()
-                onDelete(g.id)
+      <div className="group-segs-frame">
+        <div className="group-segs">
+          <span className="seg-thumb" style={{ transform: `translateX(${thumb.x}px)`, width: thumb.w }} aria-hidden="true" />
+          {groups.map(g => (
+            <button
+              key={g.id}
+              type="button"
+              ref={el => {
+                if (el) segRefs.current.set(g.id, el)
+                else segRefs.current.delete(g.id)
               }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
+              className={'seg' + (g.id === activeId ? ' active' : '')}
+              onClick={() => onSelect(g.id)}
+              title={g.title}
+            >
+              <span className="seg-name">{g.title}</span>
+              <span className="seg-count">{g.items.filter(i => i.tier !== POOL_TIER).length}</span>
+              <span
+                className="seg-close"
+                role="button"
+                tabIndex={0}
+                title="删除分组"
+                onClick={e => {
                   e.stopPropagation()
                   onDelete(g.id)
-                }
-              }}
-            >
-              ✕
-            </span>
-          </button>
-        ))}
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onDelete(g.id)
+                  }
+                }}
+              >
+                ✕
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
       <button className="seg-add" type="button" title="新建分组" onClick={onCreate}>＋</button>
     </div>

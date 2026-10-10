@@ -19,29 +19,41 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
   const inputRef = useRef(null)
   const gridRef = useRef(null)
   const heightRef = useRef(null)
+  const [confirmDel, setConfirmDel] = useState(false)
+  const confirmTimer = useRef(null)
+
+  useEffect(() => () => clearTimeout(confirmTimer.current), [])
 
   const allSelected = items.length > 0 && items.every(it => selected.has(it.id))
   const selectedIds = () => items.filter(it => selected.has(it.id)).map(it => it.id)
 
-  const toggleSelect = id => setSelected(prev => {
-    const next = new Set(prev)
+  const resetConfirm = () => {
+    setConfirmDel(false)
+    clearTimeout(confirmTimer.current)
+  }
+
+  const toggleSelect = id => {
+    const next = new Set(selected)
     if (next.has(id)) next.delete(id)
     else next.add(id)
-    return next
-  })
+    setSelected(next)
+    if (!next.size) resetConfirm()
+  }
 
   const exitSelect = () => {
     setSelectMode(false)
     setSelected(new Set())
     setTierOpen(false)
+    resetConfirm()
   }
 
-  const toggleAll = () => setSelected(prev => {
-    const next = new Set(prev)
+  const toggleAll = () => {
+    const next = new Set(selected)
     if (allSelected) items.forEach(it => next.delete(it.id))
     else items.forEach(it => next.add(it.id))
-    return next
-  })
+    setSelected(next)
+    if (!next.size) resetConfirm()
+  }
 
   const batchAddTo = tierKey => {
     const ids = selectedIds()
@@ -53,6 +65,13 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
   const batchDelete = () => {
     const ids = selectedIds()
     if (!ids.length) return
+    if (!confirmDel) {
+      setConfirmDel(true)
+      clearTimeout(confirmTimer.current)
+      confirmTimer.current = setTimeout(() => setConfirmDel(false), 3000)
+      return
+    }
+    clearTimeout(confirmTimer.current)
     ids.forEach(id => onDelete(id))
     exitSelect()
   }
@@ -139,7 +158,7 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
           <div className="pool-height" ref={heightRef}>
             <div className="pool-grid" ref={gridRef}>
               {items.length === 0 && (
-                <div className="pool-empty">上传图片或拖入图片文件，也可添加文字项目，再拖到下方等级行</div>
+                <div className="pool-empty">拖入图片或添加项目</div>
               )}
               {items.map(it => (
                 <div
@@ -174,39 +193,47 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
       </div>
       <div className={'pool-collapse' + (selectMode ? ' open' : '')}>
         <div className="pool-clip">
-          <div className="pool-actionbar">
+          <div className="pool-actionbar-wrap">
             <span className="pool-batch-label">已选 {selectedIds().length} 项</span>
-            <button className="btn pool-btn" type="button" onClick={toggleAll}>
-              {allSelected ? '取消全选' : '全选'}
-            </button>
-            <div className="pop-wrap" ref={tierWrapRef}>
-              <button
-                className="btn primary pool-btn"
-                type="button"
-                disabled={!selectedIds().length}
-                onClick={() => (tierOpen ? setTierOpen(false) : showTierMenu())}
-                onMouseEnter={() => showTierMenu()}
-                onMouseLeave={() => hideTierMenu()}
-              >
-                加入
-                <Chevron size={13} className={'pop-caret' + (tierOpen ? ' open' : '')} />
+            <div className="pool-actionbar">
+              <button className="btn pool-btn" type="button" onClick={toggleAll}>
+                {allSelected ? '取消全选' : '全选'}
               </button>
-              {tierOpen && (
-                <PopMenu
-                  anchorRef={tierWrapRef}
-                  onClose={() => setTierOpen(false)}
+              <div className="pop-wrap" ref={tierWrapRef}>
+                <button
+                  className="btn primary pool-btn"
+                  type="button"
+                  disabled={!selectedIds().length}
+                  onClick={() => (tierOpen ? setTierOpen(false) : showTierMenu())}
                   onMouseEnter={() => showTierMenu()}
                   onMouseLeave={() => hideTierMenu()}
                 >
-                  {TIERS.map(t => (
-                    <button key={t.key} type="button" onClick={() => { setTierOpen(false); batchAddTo(t.key) }}>
-                      <i className="tier-dot" style={{ background: t.c1 }}></i>{t.label}
-                    </button>
-                  ))}
-                </PopMenu>
-              )}
+                  加入
+                  <Chevron size={13} className={'pop-caret' + (tierOpen ? ' open' : '')} />
+                </button>
+                {tierOpen && (
+                  <PopMenu
+                    anchorRef={tierWrapRef}
+                    onClose={() => setTierOpen(false)}
+                    onMouseEnter={() => showTierMenu()}
+                    onMouseLeave={() => hideTierMenu()}
+                  >
+                    {TIERS.map(t => (
+                      <button key={t.key} type="button" onClick={() => { setTierOpen(false); batchAddTo(t.key) }}>
+                        <i className="tier-dot" style={{ background: t.c1 }}></i>{t.label}
+                      </button>
+                    ))}
+                  </PopMenu>
+                )}
+              </div>
+              <button
+                className={'btn danger pool-btn' + (confirmDel ? ' confirm' : '')}
+                type="button"
+                disabled={!selectedIds().length}
+                title={confirmDel ? '再点一次确认删除' : undefined}
+                onClick={batchDelete}
+              >{confirmDel ? '确认删除' : '删除所选'}</button>
             </div>
-            <button className="btn danger pool-btn" type="button" disabled={!selectedIds().length} onClick={batchDelete}>删除所选</button>
           </div>
         </div>
       </div>

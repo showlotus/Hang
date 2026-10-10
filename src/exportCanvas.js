@@ -5,11 +5,16 @@ const preferMobile = () => typeof matchMedia === 'function' && matchMedia('(max-
 
 export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile' : 'desktop') {
   const M = mode === 'mobile'
-  const W = M ? 1080 : 1800, pad = M ? 36 : 48, labelW = M ? 64 : 170, gap = M ? 22 : 14
-  const rowPad = M ? 20 : 16, innerGap = M ? 20 : 16, cardGap = M ? 28 : 13, itemsPad = M ? 4 : 3
-  const cellW = M ? 273 : 170, cellH = M ? 366 : 228
+  const W = M ? 1080 : 1800, pad = M ? 36 : 48, labelW = M ? 0 : 170, gap = M ? 22 : 14
+  const rowPad = M ? 30 : 16, innerGap = M ? 20 : 16, cardGap = M ? 30 : 13, itemsPad = M ? 0 : 3
+  const labelH = 88, rowGap = 21, picRatio = 4.25 / 4.75, nameH = 42, cardBottom = 18
   const headerH = M ? 120 : 118, footerH = 58
-  const maxPer = M ? 3 : Math.max(1, Math.floor((W - pad * 2 - rowPad * 2 - labelW - innerGap - itemsPad * 2 + gap) / (cellW + gap)))
+  const innerW = W - pad * 2 - rowPad * 2
+  const maxPer = M
+    ? Math.max(1, Math.floor((innerW + cardGap) / (200 + cardGap)))
+    : Math.max(1, Math.floor((W - pad * 2 - rowPad * 2 - labelW - innerGap - itemsPad * 2 + gap) / (170 + gap)))
+  const cellW = M ? (innerW - (maxPer - 1) * cardGap) / maxPer : 170
+  const cellH = M ? Math.round(cellW * picRatio + nameH + cardBottom) : 228
   const ranked = items.filter(i => i.tier !== POOL_TIER)
 
   const imgs = {}
@@ -17,7 +22,10 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
 
   const rows = TIERS.map(t => items.filter(i => i.tier === t.key))
   const linesOf = r => Math.max(1, Math.ceil(r.length / maxPer))
-  const rowHeights = rows.map(r => rowPad * 2 + linesOf(r) * cellH + (linesOf(r) - 1) * cardGap)
+  const rowHeights = rows.map(r => {
+    const lines = linesOf(r)
+    return rowPad * 2 + (M ? labelH + rowGap : 0) + lines * cellH + (lines - 1) * cardGap
+  })
   const totalH = Math.round(pad + headerH + rowHeights.reduce((a, b) => a + b, 0) + (rowHeights.length - 1) * gap + footerH)
 
   const canvas = document.createElement('canvas')
@@ -49,7 +57,7 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
   ctx.fillText(title.trim() || '排行榜', pad, pad + (M ? 54 : 48))
   ctx.fillStyle = '#64748b'
   ctx.font = `500 ${M ? 26 : 21}px ${FONT}`
-  ctx.fillText(`从夯到拉 · RANK LIST · 共 ${ranked.length} 项`, pad, pad + (M ? 98 : 88))
+  ctx.fillText(`从夯到拉 · 共 ${ranked.length} 项`, pad, pad + (M ? 98 : 88))
 
   let y = pad + headerH
   rows.forEach((rowItems, idx) => {
@@ -79,66 +87,55 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
     const lx = pad + rowPad
     const ly = y + rowPad
     if (M) {
-      const spineY = ly
-      const spineH = cellH
-      const spineR = 28
-      rr(ctx, lx, spineY, labelW, spineH, spineR)
+      const px = pad + rowPad, py = y + rowPad
+      const pw = W - pad * 2 - rowPad * 2, ph = labelH, pr = ph / 2
+      rr(ctx, px, py, pw, ph, pr)
       ctx.save()
       ctx.shadowColor = hexA(t.c1, .45)
       ctx.shadowBlur = 16
       ctx.shadowOffsetY = 6
-      const sb = ctx.createLinearGradient(0, spineY, 0, spineY + spineH)
-      sb.addColorStop(0, hexA(t.c1, .36))
-      sb.addColorStop(1, hexA(t.c2, .28))
-      ctx.fillStyle = sb
+      const pb = ctx.createLinearGradient(0, py, 0, py + ph)
+      pb.addColorStop(0, hexA(t.c1, .36))
+      pb.addColorStop(1, hexA(t.c2, .28))
+      ctx.fillStyle = pb
       ctx.fill()
       ctx.restore()
-      rr(ctx, lx, spineY, labelW, spineH, spineR)
-      const sl = ctx.createLinearGradient(0, spineY, 0, spineY + spineH)
-      sl.addColorStop(0, 'rgba(255,255,255,.42)')
-      sl.addColorStop(.48, 'rgba(255,255,255,.08)')
-      sl.addColorStop(1, 'rgba(255,255,255,.2)')
-      ctx.fillStyle = sl
+      rr(ctx, px, py, pw, ph, pr)
+      const pl = ctx.createLinearGradient(0, py, 0, py + ph)
+      pl.addColorStop(0, 'rgba(255,255,255,.42)')
+      pl.addColorStop(.48, 'rgba(255,255,255,.08)')
+      pl.addColorStop(1, 'rgba(255,255,255,.2)')
+      ctx.fillStyle = pl
       ctx.fill()
-      rr(ctx, lx + 1, spineY + 1, labelW - 2, spineH - 2, spineR - 1)
+      rr(ctx, px + 1, py + 1, pw - 2, ph - 2, pr - 1)
       ctx.strokeStyle = 'rgba(255,255,255,.5)'
       ctx.lineWidth = 2
       ctx.stroke()
-      const fs = 34, dfs = 21, vGap = 16
-      const cx = lx + labelW / 2
-      ctx.textAlign = 'center'
+
+      const lfs = 42, sfs = 24, dfs = 33
+      const midY = py + ph / 2
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.font = `800 ${lfs}px ${FONT}`
+      const lw = ctx.measureText(t.label).width
+      ctx.font = `500 ${sfs}px ${FONT}`
+      const sw = ctx.measureText('   ·   ').width
+      ctx.font = `400 ${dfs}px ${FONT}`
+      const dw = ctx.measureText(t.desc).width
+      let tx = px + (pw - lw - sw - dw) / 2
       ctx.fillStyle = mixHex(t.c1, '#0f172a', .62)
-      const lChars = [...t.label]
-      const dChars = [...t.desc]
-      const lbh = fs * 1.25, dlh = dfs * 1.2
-      if (/[\u4e00-\u9fa5]/.test(t.label)) {
-        ctx.font = `800 ${fs}px ${FONT}`
-        const contentH = (lChars.length - 1) * lbh + fs + vGap + (dChars.length - 1) * dlh + dfs
-        let base = spineY + (spineH - contentH) / 2 + fs * .8
-        lChars.forEach((ch, i) => ctx.fillText(ch, cx, base + i * lbh))
-        ctx.font = `600 ${dfs}px ${FONT}`
-        ctx.globalAlpha = .78
-        base += (lChars.length - 1) * lbh + vGap + dfs * .8
-        dChars.forEach((ch, i) => ctx.fillText(ch, cx, base + i * dlh))
-        ctx.globalAlpha = 1
-      } else {
-        ctx.font = `800 ${fs}px ${FONT}`
-        const sideLen = ctx.measureText(t.label).width
-        const descH = (dChars.length - 1) * dlh + dfs
-        const gapY = 16
-        const top = spineY + (spineH - (sideLen + gapY + descH)) / 2
-        ctx.save()
-        ctx.translate(cx, top + sideLen / 2)
-        ctx.rotate(Math.PI / 2)
-        ctx.textBaseline = 'middle'
-        ctx.fillText(t.label, 0, 0)
-        ctx.restore()
-        ctx.font = `600 ${dfs}px ${FONT}`
-        ctx.globalAlpha = .78
-        let dbase = top + sideLen + gapY + dfs * .8
-        dChars.forEach((ch, i) => ctx.fillText(ch, cx, dbase + i * dlh))
-        ctx.globalAlpha = 1
-      }
+      ctx.font = `800 ${lfs}px ${FONT}`
+      ctx.fillText(t.label, tx, midY)
+      tx += lw
+      ctx.globalAlpha = .55
+      ctx.font = `500 ${sfs}px ${FONT}`
+      ctx.fillText('   ·   ', tx, midY + 2)
+      tx += sw
+      ctx.globalAlpha = .78
+      ctx.font = `400 ${dfs}px ${FONT}`
+      ctx.fillText(t.desc, tx, midY)
+      ctx.globalAlpha = 1
+      ctx.textBaseline = 'alphabetic'
     } else {
       const labelH = Math.min(rowH - rowPad * 2, cellH)
       rr(ctx, lx, ly, labelW, labelH, 24)
@@ -172,13 +169,14 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
       ctx.globalAlpha = 1
     }
 
-    const zoneX = lx + labelW + innerGap
+    const zoneX = M ? pad + rowPad : lx + labelW + innerGap
     rowItems.forEach((it, i) => {
       const col = i % maxPer, rowLine = Math.floor(i / maxPer)
       const x = zoneX + itemsPad + col * (cellW + cardGap)
-      const cy = y + rowPad + rowLine * (cellH + cardGap)
+      const cy = y + rowPad + (M ? labelH + rowGap : 0) + rowLine * (cellH + cardGap)
+      const picH = M ? Math.round(cellW * picRatio) : cellW
+      const cardR = M ? 32 : 24
 
-      const cardR = M ? 36 : 24
       rr(ctx, x, cy, cellW, cellH, cardR)
       ctx.save()
       ctx.shadowColor = hexA(t.c1, .45)
@@ -197,46 +195,62 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
 
       ctx.save()
       ctx.beginPath()
-      ctx.moveTo(x, cy + cellW)
-      ctx.lineTo(x, cy + cardR)
-      ctx.arcTo(x, cy, x + cardR, cy, cardR)
-      ctx.lineTo(x + cellW - cardR, cy)
-      ctx.arcTo(x + cellW, cy, x + cellW, cy + cardR, cardR)
-      ctx.lineTo(x + cellW, cy + cellW)
+      if (M) {
+        ctx.moveTo(x, cy + picH)
+        ctx.lineTo(x, cy + cardR)
+        ctx.arcTo(x, cy, x + cardR, cy, cardR)
+        ctx.lineTo(x + cellW - cardR, cy)
+        ctx.arcTo(x + cellW, cy, x + cellW, cy + cardR, cardR)
+        ctx.lineTo(x + cellW, cy + picH)
+      } else {
+        ctx.moveTo(x, cy + cellW)
+        ctx.lineTo(x, cy + cardR)
+        ctx.arcTo(x, cy, x + cardR, cy, cardR)
+        ctx.lineTo(x + cellW - cardR, cy)
+        ctx.arcTo(x + cellW, cy, x + cellW, cy + cardR, cardR)
+        ctx.lineTo(x + cellW, cy + cellW)
+      }
       ctx.closePath()
       ctx.clip()
       if (imgs[it.id]) {
         const im = imgs[it.id]
-        const s = Math.max(cellW / im.width, cellW / im.height)
+        const s = Math.max(cellW / im.width, picH / im.height)
         const dw = im.width * s, dh = im.height * s
-        ctx.drawImage(im, x + (cellW - dw) / 2, cy + (cellW - dh) / 2, dw, dh)
+        ctx.drawImage(im, x + (cellW - dw) / 2, cy + (picH - dh) / 2, dw, dh)
       } else {
-        const fg = ctx.createLinearGradient(0, cy, 0, cy + cellW)
+        const fg = ctx.createLinearGradient(0, cy, 0, cy + picH)
         fg.addColorStop(0, hexA(t.c1, .55))
         fg.addColorStop(1, hexA(t.c2, .45))
         ctx.fillStyle = fg
-        ctx.fillRect(x, cy, cellW, cellW)
-        const hl = ctx.createLinearGradient(0, cy, 0, cy + cellW)
+        ctx.fillRect(x, cy, cellW, picH)
+        const hl = ctx.createLinearGradient(0, cy, 0, cy + picH)
         hl.addColorStop(0, 'rgba(255,255,255,.42)')
         hl.addColorStop(.48, 'rgba(255,255,255,.08)')
         hl.addColorStop(1, 'rgba(255,255,255,.2)')
         ctx.fillStyle = hl
-        ctx.fillRect(x, cy, cellW, cellW)
+        ctx.fillRect(x, cy, cellW, picH)
         ctx.fillStyle = mixHex(t.c1, '#0f172a', .62)
-        ctx.font = `800 44px ${FONT}`
+        ctx.font = `800 ${M ? 52 : 44}px ${FONT}`
         ctx.textAlign = 'center'
-        ctx.fillText((it.name || '?').trim().charAt(0), x + cellW / 2, cy + cellW / 2 + 16)
+        ctx.fillText((it.name || '?').trim().charAt(0), x + cellW / 2, cy + picH / 2 + (M ? 18 : 16))
       }
       ctx.restore()
 
       ctx.textAlign = 'center'
       ctx.fillStyle = '#0f172a'
-      ctx.font = `700 ${M ? 32 : 16}px ${FONT}`
-      ctx.fillText(truncate(ctx, it.name, cellW - (M ? 24 : 16)), x + cellW / 2, cy + cellW + (M ? 40 : 24))
-      if (it.note) {
-        ctx.fillStyle = '#64748b'
-        ctx.font = `500 ${M ? 22 : 14}px ${FONT}`
-        ctx.fillText(truncate(ctx, it.note, cellW - (M ? 24 : 16)), x + cellW / 2, cy + cellW + (M ? 84 : 46))
+      if (M) {
+        ctx.font = `700 28px ${FONT}`
+        ctx.textBaseline = 'middle'
+        ctx.fillText(truncate(ctx, it.name, cellW - 24), x + cellW / 2, cy + picH + (cellH - picH) / 2)
+        ctx.textBaseline = 'alphabetic'
+      } else {
+        ctx.font = `700 16px ${FONT}`
+        ctx.fillText(truncate(ctx, it.name, cellW - 16), x + cellW / 2, cy + cellW + 24)
+        if (it.note) {
+          ctx.fillStyle = '#64748b'
+          ctx.font = `500 14px ${FONT}`
+          ctx.fillText(truncate(ctx, it.note, cellW - 16), x + cellW / 2, cy + cellW + 46)
+        }
       }
     })
 
