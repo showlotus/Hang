@@ -33,6 +33,10 @@ export default function Blobs() {
       <span className="blob b1"></span>
       <span className="blob b2"></span>
       <span className="blob b3"></span>
+      <span className="blob b4"></span>
+      <span className="blob b5"></span>
+      <span className="blob b6"></span>
+      <span className="streak"></span>
     </div>
   )
 }

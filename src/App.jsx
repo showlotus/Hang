@@ -98,7 +98,7 @@ export default function App() {
     const g = groups.find(x => x.id === id)
     if (!g) return
     const poolCount = g.items.filter(i => i.tier === POOL_TIER).length
-    const detail = [g.items.length - poolCount ? `${g.items.length - poolCount} 项排行` : '', poolCount ? `${poolCount} 张集合图片` : '']
+    const detail = [g.items.length - poolCount ? `${g.items.length - poolCount} 个已排级项目` : '', poolCount ? `${poolCount} 个待选区项目` : '']
       .filter(Boolean).join(' · ')
     if (!confirm(`删除分组「${g.title}」${detail ? '（' + detail + '）' : ''}？此操作不可恢复。`)) return
     if (pendingRef.current && pendingRef.current.id === id) pendingRef.current = null
@@ -118,9 +118,9 @@ export default function App() {
   const addTextItem = () => {
     const names = new Set(items.filter(i => i.tier === POOL_TIER).map(i => i.name))
     let n = 1
-    while (names.has(`条目 ${n}`)) n++
-    addItem({ id: uid(), name: `条目 ${n}`, note: '', tier: POOL_TIER, src: null })
-    toast('已添加文字条目')
+    while (names.has(`项目 ${n}`)) n++
+    addItem({ id: uid(), name: `项目 ${n}`, note: '', tier: POOL_TIER, src: null })
+    toast('已添加文字项目')
   }
 
   const moveItem = (id, tierKey, beforeId) => {
@@ -152,7 +152,7 @@ export default function App() {
     }
     if (failed) toast('有文件读取失败')
     if (added.length) mutateItems(prev => [...prev, ...added])
-    toast(`已添加 ${files.length} 个条目`)
+    toast(`已添加 ${files.length} 个项目`)
   }
 
   const saveEdit = (id, patch) => {
@@ -176,7 +176,7 @@ export default function App() {
     catch { return toast('文件不是有效的 JSON') }
     if (!data || !Array.isArray(data.items)) return toast('文件格式不正确')
     const list = normalizeItems(data.items)
-    if (!list.length) return toast('文件中没有有效条目')
+    if (!list.length) return toast('文件中没有有效项目')
     const g = {
       id: uid(),
       title: typeof data.title === 'string' && data.title.trim() ? data.title.trim() : '导入的排行榜',

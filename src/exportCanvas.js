@@ -17,7 +17,7 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
 
   const rows = TIERS.map(t => items.filter(i => i.tier === t.key))
   const linesOf = r => Math.max(1, Math.ceil(r.length / maxPer))
-  const rowHeights = rows.map(r => rowPad * 2 + linesOf(r) * cellH + (linesOf(r) - 1) * cardGap + itemsPad * 2)
+  const rowHeights = rows.map(r => rowPad * 2 + linesOf(r) * cellH + (linesOf(r) - 1) * cardGap)
   const totalH = Math.round(pad + headerH + rowHeights.reduce((a, b) => a + b, 0) + (rowHeights.length - 1) * gap + footerH)
 
   const canvas = document.createElement('canvas')
@@ -79,7 +79,7 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
     const lx = pad + rowPad
     const ly = y + rowPad
     if (M) {
-      const spineY = ly + itemsPad
+      const spineY = ly
       const spineH = cellH
       const spineR = 28
       rr(ctx, lx, spineY, labelW, spineH, spineR)
@@ -176,7 +176,7 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
     rowItems.forEach((it, i) => {
       const col = i % maxPer, rowLine = Math.floor(i / maxPer)
       const x = zoneX + itemsPad + col * (cellW + cardGap)
-      const cy = y + rowPad + itemsPad + rowLine * (cellH + cardGap)
+      const cy = y + rowPad + rowLine * (cellH + cardGap)
 
       const cardR = M ? 36 : 24
       rr(ctx, x, cy, cellW, cellH, cardR)
@@ -253,7 +253,7 @@ export async function buildCanvas(items, title, mode = preferMobile() ? 'mobile'
 }
 
 export async function copyPNG(items, title, toast) {
-  if (!items.some(i => i.tier !== POOL_TIER)) return toast('先添加几个条目吧')
+  if (!items.some(i => i.tier !== POOL_TIER)) return toast('先添加几个项目吧')
   try {
     const canvas = await buildCanvas(items, title)
     const item = new ClipboardItem({ 'image/png': new Promise(res => canvas.toBlob(res, 'image/png')) })
@@ -266,7 +266,7 @@ export async function copyPNG(items, title, toast) {
 }
 
 export function downloadPNG(items, title, toast, mode) {
-  if (!items.some(i => i.tier !== POOL_TIER)) return toast('先添加几个条目吧')
+  if (!items.some(i => i.tier !== POOL_TIER)) return toast('先添加几个项目吧')
   buildCanvas(items, title, mode).then(canvas => {
     canvas.toBlob(blob => {
       const a = document.createElement('a')
@@ -281,7 +281,7 @@ export function downloadPNG(items, title, toast, mode) {
 }
 
 export function downloadJSON(items, title, toast) {
-  if (!items.length) return toast('先添加几个条目吧')
+  if (!items.length) return toast('先添加几个项目吧')
   const blob = new Blob([JSON.stringify({ title: title.trim(), items }, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')
   const name = (title.trim() || '排行榜') + '.json'

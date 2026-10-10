@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { POOL_TIER, TIERS } from '../constants.js'
+import { IS_TOUCH, POOL_TIER, TIERS } from '../constants.js'
 import Chevron from './Chevron.jsx'
 import PopMenu from './PopMenu.jsx'
 import { useHoverMenu } from '../hooks.js'
@@ -116,7 +116,7 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
                 onMouseEnter={() => showAddMenu()}
                 onMouseLeave={() => hideAddMenu()}
               >
-                <button type="button" onClick={() => { setAddOpen(false); onAddItem() }}>文字条目</button>
+                <button type="button" onClick={() => { setAddOpen(false); onAddItem() }}>文字项目</button>
                 <button type="button" onClick={() => { setAddOpen(false); inputRef.current.click() }}>上传图片</button>
               </PopMenu>
             )}
@@ -139,14 +139,14 @@ export default function ImagePool({ items, onAddFiles, onMoveMany, onDelete, onA
           <div className="pool-height" ref={heightRef}>
             <div className="pool-grid" ref={gridRef}>
               {items.length === 0 && (
-                <div className="pool-empty">上传图片或拖入图片文件，也可添加文字条目，再拖到下方等级行</div>
+                <div className="pool-empty">上传图片或拖入图片文件，也可添加文字项目，再拖到下方等级行</div>
               )}
               {items.map(it => (
                 <div
                   key={it.id}
                   className={'card pool-card' + (selected.has(it.id) ? ' selected' : '')}
                   data-id={it.id}
-                  draggable={!selectMode}
+                  draggable={!IS_TOUCH && !selectMode}
                   onClick={e => {
                     if (e.target.closest('.card-del')) return
                     if (!selectMode) return
