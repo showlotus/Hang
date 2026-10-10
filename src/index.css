@@ -90,6 +90,7 @@ body {
   opacity: .85;
 }
 .btn:hover::before, .tp-btn:hover::before, .card:hover::before, .seg-add:hover::before { opacity: 1; }
+.tier-row::before, .pool-zone::before { transition: background .35s, opacity .35s; }
 .page-head {
   position: sticky; top: 0.75rem; z-index: 20;
 }
@@ -343,16 +344,16 @@ body {
   backdrop-filter: blur(26px) saturate(180%);
   border-radius: 1.5rem; padding: 0.75rem;
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.55);
-  transition: background .2s, box-shadow .2s;
+  transition: background .35s, box-shadow .35s;
 }
 .tier-row.over {
   /* background:
     linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.16) 45%, rgba(255,255,255,.3)),
     rgba(255,255,255,.36); */
-  box-shadow: var(--focus-glow), inset 0 1px 0 rgba(255,255,255,.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 24px -6px color-mix(in srgb, var(--c1) 35%, transparent), 0 6px 28px -10px color-mix(in srgb, var(--c1) 60%, transparent);
 }
 .tier-row.over::before {
-  background: linear-gradient(165deg, rgba(10,132,255,.75), rgba(10,132,255,.18) 45%, rgba(10,132,255,.5));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--c1) 45%, transparent), color-mix(in srgb, var(--c1) 10%, transparent) 42%, color-mix(in srgb, var(--c1) 28%, transparent) 78%, color-mix(in srgb, var(--c1) 18%, transparent));
   opacity: 1;
 }
 .tier-label {
@@ -386,9 +387,9 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(170%);
   backdrop-filter: blur(20px) saturate(170%);
   border-radius: 1.125rem; overflow: hidden;
-  cursor: pointer; user-select: none;
+  cursor: pointer; user-select: none; -webkit-touch-callout: none;
   box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--c1) 45%, transparent), inset 0 1px 0 rgba(255,255,255,.6);
-  transition: box-shadow .38s var(--spring), background .2s;
+  transition: box-shadow .38s var(--spring), background .2s, transform .38s var(--spring);
 }
 .card:hover {
   /* background:
@@ -398,17 +399,27 @@ body {
 .card:active {
   cursor: grabbing;
 }
+.card.drag-ready, .drag-ghost {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c1) 55%, transparent), 0 18px 34px -12px color-mix(in srgb, var(--c1) 60%, transparent), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.card.drag-ready {
+  z-index: 1;
+  transform: scale(1.04);
+}
 .card.dragging { opacity: .3; transform: scale(.96); }
 .drag-ghost {
   position: fixed; left: 0; top: 0; z-index: 99;
   pointer-events: none; will-change: transform;
+  transition: box-shadow .25s var(--ease-out);
+  scale: 1.04;
 }
-.card.drop-before { box-shadow: -4px 0 0 0 var(--accent), -6px 0 14px rgba(10,132,255,.45), inset 0 1px 0 rgba(255,255,255,.6); }
+.card.drop-before { box-shadow: -4px 0 0 0 var(--c1), -6px 0 14px color-mix(in srgb, var(--c1) 45%, transparent), inset 0 1px 0 rgba(255,255,255,.6); }
 .card-pic { width: 100%; height: 8rem; background: #f1f5f9; }
-.card-pic img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.card-pic img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; -webkit-user-drag: none; }
 .card-pic .fallback {
   width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
   color: color-mix(in srgb, var(--c1) 62%, #0f172a); font-size: 1.875rem; font-weight: 800;
+  transition: background .25s var(--ease-out), color .25s var(--ease-out);
   background:
     linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.08) 48%, rgba(255,255,255,.2)),
     linear-gradient(180deg, color-mix(in srgb, var(--c1) 55%, transparent), color-mix(in srgb, var(--c2) 45%, transparent));
@@ -457,16 +468,16 @@ body {
   -webkit-backdrop-filter: blur(26px) saturate(180%);
   backdrop-filter: blur(26px) saturate(180%);
   box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.55);
-  transition: background .2s, box-shadow .2s;
+  transition: background .35s, box-shadow .35s;
 }
 .pool-zone.over {
   /* background:
     linear-gradient(180deg, rgba(255,255,255,.58), rgba(255,255,255,.16) 45%, rgba(255,255,255,.3)),
     rgba(255,255,255,.36); */
-  box-shadow: var(--focus-glow), inset 0 1px 0 rgba(255,255,255,.6);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 24px -6px color-mix(in srgb, var(--accent) 35%, transparent), 0 6px 28px -10px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 .pool-zone.over::before {
-  background: linear-gradient(165deg, rgba(10,132,255,.75), rgba(10,132,255,.18) 45%, rgba(10,132,255,.5));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 45%, transparent), color-mix(in srgb, var(--accent) 10%, transparent) 42%, color-mix(in srgb, var(--accent) 28%, transparent) 78%, color-mix(in srgb, var(--accent) 18%, transparent));
   opacity: 1;
 }
 .pool-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; }
@@ -515,7 +526,7 @@ body {
 .pool-collapse .pool-clip { overflow: hidden; min-height: 0; }
 .pool-collapse.open .pool-clip { overflow: visible; transition: overflow 0s .42s; }
 .pool-grid { display: flex; flex-wrap: wrap; gap: 0.625rem; padding: 0.875rem 0.875rem 1.25rem; margin: 0 -0.75rem; }
-.pool-card { --c1: #64748b; --c2: #334155; cursor: pointer; }
+.pool-card { --c1: var(--accent); --c2: #0561c9; cursor: pointer; }
 .pool-card.selected {
   background:
     linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.26) 40%, rgba(255,255,255,.4)),

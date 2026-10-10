@@ -4,6 +4,8 @@ import { tierStyle } from '../utils.js'
 import ImagePool from './ImagePool.jsx'
 
 const TOUCH = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+const POOL_TINT = { c1: '#0a84ff', c2: '#0561c9' }
+const DRAG_READY_DELAY = 250
 
 function Card({ item, tier }) {
   return (
@@ -27,10 +29,44 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
   const ghostRef = useRef(null)
   const grabRef = useRef({ x: 0, y: 0 })
   const dragImgRef = useRef(null)
+  const ghostTintRef = useRef(null)
+  const dragReadyTimerRef = useRef(null)
 
   const clearOver = () => {
     document.querySelectorAll('.tier-row.over, .pool-zone.over').forEach(el => el.classList.remove('over'))
   }
+
+  const clearDragReady = () => {
+    if (dragReadyTimerRef.current) {
+      clearTimeout(dragReadyTimerRef.current)
+      dragReadyTimerRef.current = null
+    }
+    document.querySelectorAll('.card.drag-ready').forEach(c => c.classList.remove('drag-ready'))
+  }
+
+  const tintGhost = row => {
+    const g = ghostRef.current
+    if (!g || ghostTintRef.current === row) return
+    ghostTintRef.current = row
+    if (row === 'pool') {
+      g.style.setProperty('--c1', POOL_TINT.c1)
+      g.style.setProperty('--c2', POOL_TINT.c2)
+    } else {
+      g.style.setProperty('--c1', row.style.getPropertyValue('--c1'))
+      g.style.setProperty('--c2', row.style.getPropertyValue('--c2'))
+    }
+  }
+
+  useEffect(() => {
+    const onDocPointerUp = () => clearDragReady()
+    document.addEventListener('pointerup', onDocPointerUp)
+    document.addEventListener('pointercancel', onDocPointerUp)
+    return () => {
+      clearDragReady()
+      document.removeEventListener('pointerup', onDocPointerUp)
+      document.removeEventListener('pointercancel', onDocPointerUp)
+    }
+  }, [])
 
   useEffect(() => {
     const onDocDragOver = e => {
@@ -58,6 +94,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     const card = e.target.closest('.card')
     if (!card) return
     clearDropMark()
+    clearDragReady()
     dragIdRef.current = card.dataset.id
     card.classList.add('dragging')
     e.dataTransfer.effectAllowed = 'move'
@@ -86,6 +123,8 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null }
     if (dragImgRef.current) { dragImgRef.current.remove(); dragImgRef.current = null }
     document.querySelectorAll('.dragging').forEach(c => c.classList.remove('dragging'))
+    clearDragReady()
+    ghostTintRef.current = null
     clearDropMark()
     requestAnimationFrame(clearDropMark)
     clearOver()
@@ -99,6 +138,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       e.preventDefault()
       clearOver()
       pool.classList.add('over')
+      tintGhost('pool')
       if (dragIdRef.current) {
         const cards = [...pool.querySelectorAll('.card')].filter(c => c.dataset.id !== dragIdRef.current)
         let beforeId = null
@@ -126,6 +166,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     e.preventDefault()
     clearOver()
     row.classList.add('over')
+    tintGhost(row)
     const cards = [...row.querySelectorAll('.card')].filter(c => c.dataset.id !== dragIdRef.current)
     let beforeId = null
     for (const c of cards) {
@@ -183,6 +224,15 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
     if (TOUCH && e.target.closest('.card')) e.preventDefault()
   }
 
+  const handlePointerDown = e => {
+    if (e.pointerType === 'touch') return
+    const card = e.target.closest('.card')
+    if (!card || !card.draggable) return
+    if (e.target.closest('.card-del')) return
+    clearDragReady()
+    dragReadyTimerRef.current = setTimeout(() => card.classList.add('drag-ready'), DRAG_READY_DELAY)
+  }
+
   const handleDoubleClick = e => {
     if (e.target.closest('.card-del')) return
     if (e.target.matches('.card-pic img')) return
@@ -196,6 +246,7 @@ export default function Board({ items, onMove, onMoveMany, onAddFiles, onDelete,
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
+      onPointerDown={handlePointerDown}
       onDragStart={handleDragStart}
       onDragEnd={endDrag}
       onDragOver={handleDragOver}
